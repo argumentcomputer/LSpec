@@ -1,8 +1,10 @@
--- TODO: Fix this
-syntax "it " str " so " term " should be " term: doElem
-syntax "it " str " so " term " should be empty": doElem
-syntax "it " str " so " term " shouldn't be " term: doElem
-syntax "it " str " so " term " shouldn't be empty": doElem
+import LSpec.Spec
+
+syntax "spec:" term : term
+-- syntax "it " str " so " term " should be " term: term
+-- syntax "it " str " so " term " should be empty": term
+-- syntax "it " str " so " term " shouldn't be " term: term
+-- syntax "it " str " so " term " shouldn't be empty": term
 
 
 syntax (name := testSuite) withPosition("test_suite" colGt doElem*) : command
