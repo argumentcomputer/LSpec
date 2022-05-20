@@ -49,6 +49,11 @@ structure SpecOn {α : Type} (obj : α) where
                             -- I wanted this to be a literal `Prop`, but dealing with the `DecidablePred` 
                             -- instance was annoying
 
+@[reducible]def equals {α : Type} [BEq α] (a b : α) : SpecOn () := {
+  testParam := Unit
+  prop      := fun _ => fromBool $ a == b
+}
+
 -- The idea is to write generic specs in the library like this one
 @[reducible]def alwaysEquals {α β : Type} [BEq β] (f : α → β) (b : β) : SpecOn f := {
   testParam := α
@@ -78,49 +83,49 @@ variable {α : Type} {a : α}
 
 -- Basic Example type, as functionality is added it will probably get more complicated (custom messages
 -- and configurations per example)
-structure Example (spec : SpecOn a) where
+structure ExampleOf (spec : SpecOn a) where
   descr : Option String
   exam : spec.testParam
 
-abbrev Examples (spec : SpecOn a) := List $ Example spec
+abbrev Examples (spec : SpecOn a) := List $ ExampleOf spec
 
-namespace Example
+namespace ExampleOf
 
 -- Tool to construct "default" examples from a given parameter, this will be helpful eventually when
 -- examples become more complicated
-def fromParam (spec : SpecOn a) (input : spec.testParam) : Example spec := { 
+def fromParam (spec : SpecOn a) (input : spec.testParam) : ExampleOf spec := { 
   descr := none
   exam  := input 
 }
 
-def fromDescrParam (spec : SpecOn a) (descr : String) (input : spec.testParam) : Example spec := {
+def fromDescrParam (spec : SpecOn a) (descr : String) (input : spec.testParam) : ExampleOf spec := {
     descr := pure descr
     exam  := input
 }
 
 -- Check the example, and get a `Result`
-def check {α : Type} {a : α} {spec : SpecOn a} (exmp : Example spec) : Result := 
+def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) : Result := 
   spec.prop exmp.exam
 
 -- This can eventually be expanded so a run does more than just IO
-def run {α : Type} {a : α} {spec : SpecOn a} (exmp : Example spec) : String :=
+def run {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) : String :=
   match exmp.descr with
     | none   => s!"{exmp.check}"
     | some d => s!"it {d}: {exmp.check}"
 
-end Example 
+end ExampleOf
 
 -- Ditto from above
 namespace Examples
 
 def fromParams {α : Type} {a : α} (spec : SpecOn a) (input : List spec.testParam) : Examples spec := 
-  input.map <| Example.fromParam spec
+  input.map <| ExampleOf.fromParam spec
 
 partial def check {α : Type} {a : α} {spec : SpecOn a} (exmp : Examples spec) : List Result := 
-  exmp.map Example.check
+  exmp.map ExampleOf.check
 
 partial def run {α : Type} {a : α} {spec : SpecOn a} (exmps : Examples spec) : List String :=
-  exmps.map Example.run 
+  exmps.map ExampleOf.run 
 
 end Examples
 
