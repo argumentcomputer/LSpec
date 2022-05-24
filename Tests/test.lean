@@ -41,9 +41,13 @@ def evenExample : ExampleOf noOddSpec :=
 def evenExamples : ExamplesOf noOddSpec :=
   .fromParams [([1,2,3],3), ([6,27,19,20],7), ([45,7,45,672,34,231,42,3],3)]
 
-#eval evenExample.run
+#spec evenExample
+-- doesn't have odds:
+-- ✓ Success!
 
--- #spec evenExample
 #spec evenExamples
+-- ✓ Success!
+-- ✓ Success!
+-- ✓ Success!
 
 end test2

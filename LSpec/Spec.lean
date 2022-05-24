@@ -2,39 +2,23 @@ import Lean
 
 -- TODO: Fix documentation
 
--- Pretty much lifted from Hspec
-inductive FailureReason
-  | noReason
-  | reason (descr : String := "")
-  | noMatch (descr : String := "") (exp got : String)
-  | error {ε α : Type} (descr : String := "") (ex : Except ε α)
-
-def FailureReason.toString : FailureReason → String
-  | .noReason              => "× Failure!"
-  | .reason         descr  => descr
-  | .noMatch descr exp got =>
-    let msg := s!"Expected '{exp}' but got '{got}'"
-    if descr.isEmpty then msg else s!"{descr}: {msg}"
-  | .error   descr except  =>
-    if descr.isEmpty then "Exception thrown" else s!"{descr}"
-
 inductive Result
-  | ok   (successMessage : String := "✓ Success!")
-  | fail (reason : FailureReason := .noReason) -- (Maybe Location)
+  | success
+  | failure
 
 def Result.toString : Result → String
-  | .ok   msg => msg
-  | .fail rsn => rsn.toString
+  | .success => "✓ Success!"
+  | .failure => "× Failure!"
 
 -- helper function for now, but can very easily add more robust descriptions in the generic specs
 -- below
 def ofBool : Bool → Result
-  | true  => .ok
-  | false => .fail
+  | true  => .success
+  | false => .failure
 
 def Result.toBool : Result → Bool
-  | .ok _ => true
-  | _     => false
+  | .success => true
+  | _        => false
 
 -- I went back and forth on this for a while, and arrived at this tentative definition of a Spec.
 structure SpecOn {α : Type} (obj : α) where
@@ -73,7 +57,11 @@ structure ExampleOf (spec : SpecOn a) where
   descr : Option String
   exam  : spec.testParam
 
-abbrev ExamplesOf (spec : SpecOn a) := List $ ExampleOf spec
+structure ExamplesOf (spec : SpecOn a) where
+  descr : Option String
+  exams : List spec.testParam
+
+-- abbrev ExamplesOf (spec : SpecOn a) := List $ ExampleOf spec
 
 namespace ExampleOf
 
@@ -90,12 +78,10 @@ def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) : Resul
   spec.prop exmp.exam
 
 -- This can eventually be expanded so a run does more than just IO
-def run {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) : Bool × String :=
+def run {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) :
+    Option String × Bool × String :=
   let res := exmp.check
-  let msg : String := match exmp.descr with
-    | none   => res.toString
-    | some d => s!"it {d}: {res.toString}"
-  (res.toBool, msg)
+  (exmp.descr, res.toBool, res.toString)
 
 end ExampleOf
 
@@ -104,17 +90,20 @@ namespace ExamplesOf
 
 def fromParams {α : Type} {a : α} {spec : SpecOn a}
     (input : List spec.testParam) : ExamplesOf spec :=
-  input.map <| .fromParam
+  ⟨none, input⟩
 
 def fromDescrParams {α : Type} {a : α} {spec : SpecOn a}
     (descr : String) (input : List spec.testParam) : ExamplesOf spec :=
-  input.map <| .fromDescrParam descr
+  ⟨descr, input⟩
 
-def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExamplesOf spec) : List Result :=
-  exmp.map ExampleOf.check
+def check {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) :
+    List Result :=
+  exmps.exams.map spec.prop
 
-def run {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) : List (Bool × String) :=
-  exmps.map ExampleOf.run
+def run {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) :
+    Option String × List (Bool × String) :=
+  let res := exmps.check
+  (exmps.descr, (res.map Result.toBool).zip $ res.map Result.toString)
 
 end ExamplesOf
 
@@ -129,7 +118,10 @@ def getBool! : Expr → Bool
 
 def getStr! : Expr → String
   | .lit (.strVal s) _ => s
-  | _                  => panic! "not Expr.lit!"
+  | _                  => unreachable!
+
+def getOptionStr (e : Expr) : Option String :=
+  if e.isAppOf ``Option.some then some (getStr! $ e.getArg! 2) else none
 
 def recoverTestResult (res : Expr) : Bool × String :=
   (getBool! $ res.getArg! 2, getStr! $ res.getArg! 3)
@@ -141,34 +133,26 @@ elab "#spec " term:term : command =>
     synthesizeSyntheticMVarsNoPostponing
     let type ← inferType term
     if type.isAppOf ``ExampleOf then
-      -- `Bool × String`
+      -- `Option String × Bool × String`
       let res ← reduce (← mkAppM ``ExampleOf.run #[term])
-      dbg_trace res.getArg! 3
-      match recoverTestResult res with
-      | (true,  msg) => logInfo msg
-      | (false, msg) => throwError msg
+      let descr := getOptionStr (res.getArg! 2)
+      match recoverTestResult (res.getArg! 3) with
+      | (true,  msg) => logInfo $
+        if descr.isSome then s!"{descr.get!}:\n{msg}" else msg
+      | (false, msg) => throwError
+        if descr.isSome then s!"{descr.get!}:\n{msg}" else msg
     else if type.isAppOf ``ExamplesOf then
-       -- `List (Bool × String)`
+       -- `Option String × List (Bool × String)`
       let res ← reduce (← mkAppM ``ExamplesOf.run #[term])
-      match res.listLit? with
+      let descr := getOptionStr (res.getArg! 2)
+      match (res.getArg! 3).listLit? with
       | none => unreachable!
       | some (_, res) =>
         let res := res.map recoverTestResult
         let success? := res.foldl (init := true) fun acc (b, _) => acc && b
-        let msg' : String := "\n".intercalate $ res.map fun (_, msg) => msg
+        let msg' : String := match descr with
+          | none => "\n".intercalate $ res.map fun (_, msg) => msg
+          | some d =>
+            s!"{d}\n" ++ ("\n".intercalate $ res.map fun (_, msg) => msg)
         if success? then logInfo msg' else throwError msg'
     else throwError "Invalid term to run '#spec' with"
-
-def foo (n : Nat) : Nat := n
-
--- Once we have generic specs above, we can easily construct specs for particular examples
--- The idea is to hook this into a version of the syntax Arthur implemented in `YatimaSpec.lean`
-@[reducible] def fooSpec : SpecOn foo := alwaysEquals foo 4
-
--- Can create examples for the specs also using .fromParam
-def fooExample  : ExampleOf fooSpec  := .fromDescrParam "this message" 4
-def fooExamples : ExamplesOf fooSpec := .fromParams [2,3,4,5,6,6]
-
-def fooExamples' : ExamplesOf fooSpec := .fromDescrParams "hihi" [2,3,4,5,6,6]
-
-#spec fooExample
