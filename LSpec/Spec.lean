@@ -110,7 +110,7 @@ def fromDescrParams {α : Type} {a : α} {spec : SpecOn a}
     (descr : String) (input : List spec.testParam) : ExamplesOf spec :=
   input.map <| .fromDescrParam descr
 
-def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExamplesOf spec) : List Result :
+def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExamplesOf spec) : List Result :=
   exmp.map ExampleOf.check
 
 def run {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) : List (Bool × String) :=
