@@ -1,4 +1,4 @@
-import LSpec.Spec
+import LSpec.Meta
 
 
 namespace test1

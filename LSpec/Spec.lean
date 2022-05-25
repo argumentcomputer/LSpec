@@ -1,5 +1,3 @@
-import Lean
-
 -- TODO: Fix documentation
 
 inductive Result
@@ -108,51 +106,3 @@ def run {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) :
 end ExamplesOf
 
 end SectionExample
-
-open Lean
-
-def getBool! : Expr → Bool
-  | .const ``Bool.true  .. => true
-  | .const ``Bool.false .. => false
-  | _                      => unreachable!
-
-def getStr! : Expr → String
-  | .lit (.strVal s) _ => s
-  | _                  => unreachable!
-
-def getOptionStr (e : Expr) : Option String :=
-  if e.isAppOf ``Option.some then some (getStr! $ e.getArg! 2) else none
-
-def recoverTestResult (res : Expr) : Bool × String :=
-  (getBool! $ res.getArg! 2, getStr! $ res.getArg! 3)
-
-open Meta Elab Command Term in
-elab "#spec " term:term : command =>
-  liftTermElabM `assert do
-    let term ← elabTerm term none
-    synthesizeSyntheticMVarsNoPostponing
-    let type ← inferType term
-    if type.isAppOf ``ExampleOf then
-      -- `Option String × Bool × String`
-      let res ← reduce (← mkAppM ``ExampleOf.run #[term])
-      let descr := getOptionStr (res.getArg! 2)
-      match recoverTestResult (res.getArg! 3) with
-      | (true,  msg) => logInfo $
-        if descr.isSome then s!"{descr.get!}:\n{msg}" else msg
-      | (false, msg) => throwError
-        if descr.isSome then s!"{descr.get!}:\n{msg}" else msg
-    else if type.isAppOf ``ExamplesOf then
-       -- `Option String × List (Bool × String)`
-      let res ← reduce (← mkAppM ``ExamplesOf.run #[term])
-      let descr := getOptionStr (res.getArg! 2)
-      match (res.getArg! 3).listLit? with
-      | none => unreachable!
-      | some (_, res) =>
-        let res := res.map recoverTestResult
-        let success? := res.foldl (init := true) fun acc (b, _) => acc && b
-        let msg' : String := match descr with
-          | none => "\n".intercalate $ res.map fun (_, msg) => msg
-          | some d =>
-            s!"{d}\n" ++ ("\n".intercalate $ res.map fun (_, msg) => msg)
-        if success? then logInfo msg' else throwError msg'
-    else throwError "Invalid term to run '#spec' with"
