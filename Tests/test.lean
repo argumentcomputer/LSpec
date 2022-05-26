@@ -1,17 +1,18 @@
 import LSpec.Meta
 
-
 namespace test1
 
 def foo (n : Nat) : Nat := n
 
--- Once we have generic specs above, we can easily construct specs for particular examples
--- The idea is to hook this into a version of the syntax Arthur implemented in `YatimaSpec.lean`
+-- Once we some generic spec is defined, one can easily construct specs to test particular properties
 @[reducible] def fooSpec : SpecOn foo := alwaysEquals foo 4
 
 -- Can create examples for the specs also using .fromParam
 def fooExample  : ExampleOf fooSpec := .fromParam 4
 def fooExamples : ExamplesOf fooSpec := .fromParams [2,3,4,5,6,6]
+
+
+-- Examples are tested using `#spec`:
 
 #spec 0
  -- Invalid term to run '#spec' with
@@ -29,6 +30,10 @@ def fooExamples : ExamplesOf fooSpec := .fromParams [2,3,4,5,6,6]
 
 end test1
 
+
+/-
+Some more spec examples. 
+-/
 namespace test2
 
 def onlyEven (xs : List Nat) : List Nat := xs.filter (· % 2 == 0)
@@ -52,7 +57,9 @@ def evenExamples : ExamplesOf noOddSpec :=
 
 end test2
 
--- Same as above but with better notation!
+/-
+The above test examples, but with a metaprogramming layer to make the process more seamless.
+-/
 namespace test3
 
 def foo (n : Nat) : Nat := n

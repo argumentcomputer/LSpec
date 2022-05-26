@@ -52,7 +52,29 @@ elab "#spec " term:term : command =>
         if success? then logInfo msg' else throwError msg'
     else throwError "Invalid term to run '#spec' with"
 
--- Syntax to help build examples
+/-
+Some macros to support making specifications out of the generic specifications. Use this as
+
+`mkspec fooSpec : foo := alwaysEquals foo 4`
+
+to serve a synonym for
+
+`@[reducible] def fooSpec : SpecOn foo := alwaysEquals foo 4`
+
+Check out `../Tests/test.lean` for more examples.
+-/
+syntax (name := spec) "mkspec " ident " : " term " := " term : command
+
+macro_rules
+  | `(mkspec $id:ident : $f := $t) => `(@[reducible] def $id : SpecOn $f := $t)
+
+/-
+Some macros to support building examples. Use this as
+
+`#spec Test <spec_name> with <input_param> => <description>`
+
+Check out `../Tests/test.lean` for examples.
+-/
 syntax "Test " term " with " term (" => " str)? : term
 syntax "Tests " term " with " term (" => " str)? : term
 
@@ -63,9 +85,3 @@ macro_rules
   | `(Tests $t with $x $[=> $s]?) => match s with
     | some s => `((.fromDescrParams $s $x : ExamplesOf $t))
     | none   => `((.fromParams $x : ExamplesOf $t))
-
--- Syntax to help build specs
-syntax (name := spec) "mkspec " ident " : " term " := " term : command
-
-macro_rules
-  | `(mkspec $id:ident : $f := $t) => `(@[reducible] def $id : SpecOn $f := $t)
