@@ -65,10 +65,5 @@ macro_rules
 -- Syntax to help build specs
 syntax (name := spec) "mkspec " ident " : " term " := " term : command
 
-open Syntax Elab Command in
-@[commandElab spec]
-def elabSpec : CommandElab
-  | `(mkspec $id:ident : $f := $t) => do 
-      elabCommand <|
-      ← `(@[reducible] def $id : SpecOn $f := $t)
-  | _ => throwUnsupportedSyntax
+macro_rules
+  | `(mkspec $id:ident : $f := $t) => `(@[reducible] def $id : SpecOn $f := $t)
