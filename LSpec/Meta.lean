@@ -57,10 +57,12 @@ syntax "Test " term " with " term (" => " str)? : term
 syntax "Tests " term " with " term (" => " str)? : term
 
 macro_rules
-  | `(Test $t with $x) => `((.fromParam $x : ExampleOf $t))
-  | `(Test $t with $x => $s) => `((.fromDescrParam $s $x : ExampleOf $t))
-  | `(Tests $t with $x) => `((.fromParams $x : ExamplesOf $t))
-  | `(Tests $t with $x => $s) => `((.fromDescrParams $s $x : ExamplesOf $t))
+  | `(Test $t with $x $[=> $s]?) => match s with
+    | some s => `((.fromDescrParam $s $x : ExampleOf $t))
+    | none   => `((.fromParam $x : ExampleOf $t))
+  | `(Tests $t with $x $[=> $s]?) => match s with
+    | some s => `((.fromDescrParams $s $x : ExamplesOf $t))
+    | none   => `((.fromParams $x : ExamplesOf $t))
 
 -- Syntax to help build specs
 syntax (name := spec) "mkspec " ident " : " term " := " term : command
