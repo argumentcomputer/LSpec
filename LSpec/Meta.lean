@@ -56,7 +56,6 @@ elab "#spec " term:term : command =>
 syntax "Test " term " with " term (" => " str)? : term
 syntax "Tests " term " with " term (" => " str)? : term
 
-set_option hygiene false in
 macro_rules
   | `(Test $t with $x) => `((.fromParam $x : ExampleOf $t))
   | `(Test $t with $x => $s) => `((.fromDescrParam $s $x : ExampleOf $t))
