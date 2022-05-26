@@ -51,3 +51,24 @@ def evenExamples : ExamplesOf noOddSpec :=
 -- ✓ Success!
 
 end test2
+
+-- Same as above but with better notation!
+namespace test3
+
+def foo (n : Nat) : Nat := n
+
+mkspec fooSpec : foo := alwaysEquals foo 4
+
+#spec Test fooSpec with 4
+#spec Tests fooSpec with [2,3,4,5,6,6]
+
+
+def onlyEven (xs : List Nat) : List Nat := xs.filter (· % 2 == 0)
+
+mkspec noOddSpec : onlyEven := depDoesntContain onlyEven
+
+#spec Test noOddSpec with ([1,2,3],3) => "doesn't have odds"
+
+#spec Tests noOddSpec with [([1,2,3],3), ([6,27,19,20],7), ([45,7,45,672,34,231,42,3],3)]
+
+end test3

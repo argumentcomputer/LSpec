@@ -51,3 +51,25 @@ elab "#spec " term:term : command =>
             s!"{d}\n" ++ ("\n".intercalate $ res.map fun (_, msg) => msg)
         if success? then logInfo msg' else throwError msg'
     else throwError "Invalid term to run '#spec' with"
+
+-- Syntax to help build examples
+syntax "Test " term " with " term (" => " str)? : term
+syntax "Tests " term " with " term (" => " str)? : term
+
+set_option hygiene false in
+macro_rules
+  | `(Test $t with $x) => `((.fromParam $x : ExampleOf $t))
+  | `(Test $t with $x => $s) => `((.fromDescrParam $s $x : ExampleOf $t))
+  | `(Tests $t with $x) => `((.fromParams $x : ExamplesOf $t))
+  | `(Tests $t with $x => $s) => `((.fromDescrParams $s $x : ExamplesOf $t))
+
+-- Syntax to help build specs
+syntax (name := spec) "mkspec " ident " : " term " := " term : command
+
+open Syntax Elab Command in
+@[commandElab spec]
+def elabSpec : CommandElab
+  | `(mkspec $id:ident : $f := $t) => do 
+      elabCommand <|
+      ← `(@[reducible] def $id : SpecOn $f := $t)
+  | _ => throwUnsupportedSyntax
