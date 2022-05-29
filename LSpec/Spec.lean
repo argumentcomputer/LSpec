@@ -14,7 +14,7 @@ def Result.toString : Result → String
 For now `Result` is not much more than `Bool`, so the distinction is arbitrary. The infrastructure
 is in place to support more robust test results closer to what is offered by Hspec. 
 -/
-def ofBool : Bool → Result
+def Result.ofBool : Bool → Result
   | true  => .success
   | false => .failure
 
@@ -30,7 +30,7 @@ structure SpecOn {α : Type} (obj : α) where
   -- The parameters `testParam` that the spec is to be tested against
   testParam : Type
   -- The property `prop` that the spec is 
-  prop : testParam → Result
+  prop : testParam → Bool
 
 /-
 This section contains a list of generic specifications that the user can plug in to generate 
@@ -53,33 +53,33 @@ variable {α β : Type} [BEq α] [BEq β]
 `equals` tests for boolean equality of two terms
 -/
 @[reducible] def equals (a b : α) : SpecOn () :=
-  ⟨Unit, fun _ => ofBool $ a == b⟩
+  ⟨Unit, fun _ => a == b⟩
 
 /--
 `alwaysEquals` tests whether the function `f` is constant equal to `b`
 -/
 @[reducible] def alwaysEquals (f : α → β) (b : β) : SpecOn f :=
-  ⟨α, fun a => ofBool $ f a == b⟩
+  ⟨α, fun a => f a == b⟩
 
 /--
 `doesntContain` tests whether a list does not contain the `testParam`
 -/
 @[reducible] def doesntContain (bs : List β) : SpecOn bs :=
-  ⟨β, fun b => ofBool $ not $ bs.contains b⟩
+  ⟨β, fun b => not $ bs.contains b⟩
 
 /--
 `depDoesntContain` is a dependent version of `doesntContain`, where the output of a list-valued
 function `f` does not contain a parametrized 
 -/
 @[reducible] def depDoesntContain (f : α → List β) : SpecOn f :=
-  ⟨α × β, fun (a, b) => ofBool $ not $ (f a).contains b⟩
+  ⟨α × β, fun (a, b) => not $ (f a).contains b⟩
 
 /--
 `neverContains` test whether a list-valued function `f` never evaluates to a list containing a fixed
 `b : β`. 
 -/
 @[reducible] def neverContains (f : α → List β) (b : β) : SpecOn f :=
-  ⟨α, fun a => ofBool $ not $ (f a).contains b⟩
+  ⟨α, fun a => not $ (f a).contains b⟩
 
 end SectionSpecs
 
@@ -123,7 +123,7 @@ def fromDescrParam {spec : SpecOn a} (descr : String) (input : spec.testParam) :
 `check` an example, and yield a `Result`
 -/
 def check {α : Type} {a : α} {spec : SpecOn a} (exmp : ExampleOf spec) : Result :=
-  spec.prop exmp.exam
+  .ofBool $ spec.prop exmp.exam
 
 /--
 Extract the relevant pieces of a `Result` for pretty-priting and analysis. This is:
@@ -153,7 +153,7 @@ def fromDescrParams {α : Type} {a : α} {spec : SpecOn a}
 
 def check {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) :
     List Result :=
-  exmps.exams.map spec.prop
+  exmps.exams.map spec.prop |>.map .ofBool
 
 def run {α : Type} {a : α} {spec : SpecOn a} (exmps : ExamplesOf spec) :
     Option String × List (Bool × String) :=

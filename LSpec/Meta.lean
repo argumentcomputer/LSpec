@@ -1,6 +1,26 @@
 import Lean
 import LSpec.Spec
 
+syntax "Test " term " with " term (" => " str)? : term
+syntax "Tests " term " with " term (" => " str)? : term
+
+/--
+Helper macros to build terms of `ExampleOf` or `ExamplesOf` respectively as:
+
+* `Test <spec_name> with <input_param> => <description>`
+* `Tests <spec_name> with <input_param> => <description>`
+
+These macros are expanded to their respective `fromParam/fromDescrParam` and
+`fromParam/fromDescrParams` functions.
+-/
+macro_rules
+  | `(Test $t with $x $[=> $s]?) => match s with
+    | some s => `((.fromDescrParam $s $x : ExampleOf $t))
+    | none   => `((.fromParam $x : ExampleOf $t))
+  | `(Tests $t with $x $[=> $s]?) => match s with
+    | some s => `((.fromDescrParams $s $x : ExamplesOf $t))
+    | none   => `((.fromParams $x : ExamplesOf $t))
+
 open Lean
 
 private def getBool! : Expr → Bool
@@ -59,7 +79,7 @@ elab "#spec " term:term : command =>
         if success? then logInfo msg' else throwError msg'
     else throwError "Invalid term to run '#spec' with"
 
-syntax (name := spec) "mkspec " ident " : " term " := " term : command
+syntax "mkspec " ident " : " term " := " term : command
 
 /--
 Helper macro to build specifications out of the generic specifications. So if
@@ -73,23 +93,3 @@ Expands to
 -/
 macro_rules
   | `(mkspec $id:ident : $f := $t) => `(@[reducible] def $id : SpecOn $f := $t)
-
-syntax "Test " term " with " term (" => " str)? : term
-syntax "Tests " term " with " term (" => " str)? : term
-
-/--
-Helper macros to build terms of `ExampleOf` or `ExamplesOf` respectively as:
-
-* `Test <spec_name> with <input_param> => <description>`
-* `Tests <spec_name> with <input_param> => <description>`
-
-These macros are expanded to their respective `fromParam/fromDescrParam` and
-`fromParam/fromDescrParams` functions.
--/
-macro_rules
-  | `(Test $t with $x $[=> $s]?) => match s with
-    | some s => `((.fromDescrParam $s $x : ExampleOf $t))
-    | none   => `((.fromParam $x : ExampleOf $t))
-  | `(Tests $t with $x $[=> $s]?) => match s with
-    | some s => `((.fromDescrParams $s $x : ExamplesOf $t))
-    | none   => `((.fromParams $x : ExamplesOf $t))
