@@ -28,3 +28,9 @@ def lspec (s : String) (t : LSpec) (_ : List String) : IO UInt32 := do
   else
     IO.eprintln msg
     return 1
+
+def isEmptyList : Rel (List α) :=
+  .hasProperty fun l => l.isEmpty
+
+def isNotEmptyList : Rel (List α) :=
+  .hasProperty fun l => not l.isEmpty
