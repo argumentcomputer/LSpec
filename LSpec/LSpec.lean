@@ -8,8 +8,8 @@ inductive LSpec
   deriving Inhabited
 
 def Result.toMsg : String × Bool → String
-  | (d, true)  => s!"✓ {d}"
-  | (d, false) => s!"× {d}"
+  | (d, true)  => s!"✓ it {d}"
+  | (d, false) => s!"× it {d}"
 
 open LSpec Rel in
 def runSpec (results : List (String × Bool)) : LSpec → List (String × Bool)
