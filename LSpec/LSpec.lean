@@ -2,23 +2,23 @@ inductive Rel (α : Type)
   | shouldBe [BEq α] (t : α)
   | hasProperty (p : α → Bool)
 
-inductive Spec
+inductive LSpec
   | done
-  | it (descr : String) (a : α) (rel : Rel α) (and : Spec)
+  | it (descr : String) (a : α) (rel : Rel α) (and : LSpec)
   deriving Inhabited
 
 def Result.toMsg : String × Bool → String
   | (d, true)  => s!"✓ {d}"
   | (d, false) => s!"× {d}"
 
-open Spec Rel in
-def runSpec (results : List (String × Bool)) : Spec → List (String × Bool)
+open LSpec Rel in
+def runSpec (results : List (String × Bool)) : LSpec → List (String × Bool)
   | done => results.reverse
   | it d a rel and => match rel with
     | shouldBe b => (d, a == b) :: (runSpec results and)
     | hasProperty p => (d, p a) :: (runSpec results and)
 
-def lspec (s : String) (t : Spec) (_ : List String) : IO UInt32 := do
+def lspec (s : String) (t : LSpec) (_ : List String) : IO UInt32 := do
   IO.println s!"Testing that: {s}"
   let res := runSpec [] t
   let msg := "\n".intercalate $ res.map Result.toMsg
