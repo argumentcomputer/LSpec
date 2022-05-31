@@ -1,5 +1,5 @@
 import Lean
-import LSpec.SpecOn.Spec
+import LSpec.archive.Spec
 
 syntax "Test " term " with " term (" => " str)? : term
 syntax "Tests " term " with " term (" => " str)? : term

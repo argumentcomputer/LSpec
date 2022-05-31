@@ -1,4 +1,5 @@
-import LSpec.SpecOn.Meta
+import LSpec.archive.Meta
+import LSpec.archive.Runner
 
 namespace test1
 
@@ -79,3 +80,47 @@ mkspec noOddSpec : onlyEven := depDoesntContain onlyEven
 #spec Tests noOddSpec with [([1,2,3],3), ([6,27,19,20],7), ([45,7,45,672,34,231,42,3],3)]
 
 end test3
+
+namespace test4
+
+-- Tests using raw functions
+def testTree : Spec :=
+  describe "test" do
+    it (doesntContain [1,2,3]) $ ExampleOf.fromDescrParam "[1,2,3] doesn't contain 4" 4
+    it (doesntContain [1,2,3]) $ ExampleOf.fromDescrParam "[1,2,3] doesn't contain 5" 5
+    describe "testing failures" $ do
+      it (doesntContain [1,2,3]) $ ExampleOf.fromDescrParam "[1,2,3] doesn't contain 1" 1
+      it (doesntContain [1,2,3]) $ ExampleOf.fromDescrParam "[1,2,3] doesn't contain 2" 2
+    it (equals 1 2) $ ExampleOf.fromDescrParam "1 equals 2" ()
+    it (equals 1 1) $ ExampleOf.fromDescrParam "1 equals 1" ()
+
+-- Tests that use the Meta.lean syntax
+def testTree2 : Spec :=
+  describe "test2" do
+     it' $ Test doesntContain [1,2,3] with 4 => "Hello"
+     it' $ Test doesntContain [1,2,3] with 3 => "World"
+     it' $ Test doesntContain [1,2,3] with 1
+
+-- testTree1 and testTree2 combined into a single tree
+def combined : Spec := do
+  describe "combined" do
+    testTree
+    testTree2
+
+#eval combined.run
+/-
+combined
+  test
+    [1,2,3] doesn't contain 4: ✓ Success!
+    [1,2,3] doesn't contain 5: ✓ Success!
+    testing failures
+      [1,2,3] doesn't contain 1: × Failure!
+      [1,2,3] doesn't contain 2: × Failure!
+    1 equals 2: × Failure!
+    1 equals 1: ✓ Success!
+  test2
+    Hello: ✓ Success!
+    World: × Failure!
+    × Failure!
+-/
+end test4
