@@ -1,33 +1,23 @@
 # LSpec
+
 A Testing Framework for Lean
 
 ## Usage
 
-In the file where you want to run the tests: `import LSpec`, define the specification using the
-`mkspec` syntax, and run the test using `#spec Tests <specname> with <input_param>`
+There are two ways to use LSpec: via the `#lspec` command and via the `lspec`
+function.
 
-```lean
-def foo (n : Nat) : Nat := n
+The former is used when you want to test a function in the same file you define
+it. If the test fails, an error is thrown, which can interrupt the `lake build`
+command in your lib that uses LSpec as a dependency.
 
-mkspec fooSpec : foo := alwaysEquals foo 4
+The later is meant for writing tests on a separate file, which can then be run
+independently with the `lspec` binary. We'll see more about it.
 
-#spec Test fooSpec with 4 => "Always equals four"
+## The `LSpec` and `Rel` types
 
-#spec Tests fooSpec with [2,3,4,5,6,6]
-```
+### The `it` helper function
 
-See `Tests/test.lean` for more examples.
+## The `#lspec` command
 
-## Generic specs
-
-So far the following generic specs are defined: 
-
-* `equals`
-* `alwaysEquals`
-* `doesntContain`
-* `depDoesntContain`
-* `neverContains`
-
-But more can be defined by following the examples provided in `Spec.Lean`. The `reducible` attribute
-is important in defining the generic specification, so make sure to include it when you write your
-own specifications by hand.
+## The `lspec` function
