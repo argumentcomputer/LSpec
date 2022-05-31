@@ -1,5 +1,4 @@
-import LSpec.Meta
-import LSpec.Rels
+import LSpec
 
 def foo : LSpec := it "knows equality" 4 (shouldBe 4)
 
