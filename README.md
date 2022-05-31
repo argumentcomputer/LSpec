@@ -107,12 +107,14 @@ Testing that: some description
 
 ## The `lspec` binary
 
-Now suppose you want to create multiple test files, each their own test suite.
-You just need to create a folder called `Tests` in the root directory of your
-project and then:
+Now suppose you want to create multiple test files, each with their own test
+suite. You just need to create a folder called `Tests` in the root directory of
+your project and then:
 
 1. Add Lean files similar to the `Tests.lean` example above
 2. Compile the LSpec binary with `lake compile LSpec`
-3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`
+3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`, which searches
+for and runs Lean files inside `Tests` recursively (yes, you can add folders
+inside `Tests` and create your own file structure)
 
 Note: this flow can be automated with CI flows.
