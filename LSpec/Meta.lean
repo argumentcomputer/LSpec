@@ -4,6 +4,10 @@ import LSpec.LSpec
 syntax (name := lspecStx) "#lspec " term : command
 
 open Lean Meta Elab Command Term in
+/--
+Custom elaborator for the `#lspec` command. 
+Basically it runs the normal `lspec` function and outputs to the Infoview.
+-/
 @[commandElab lspecStx] unsafe def elabLSpec : CommandElab := fun stx => do
   let term := stx[1]
   liftTermElabM `lspec do

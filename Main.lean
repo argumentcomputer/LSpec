@@ -50,6 +50,7 @@ def main : IO UInt32 := do
     if out.exitCode != 0 then
       IO.eprint out.stderr
       allPassed := false
+  
   if allPassed then
     IO.println "\nAll tests passed!"
     return 0
