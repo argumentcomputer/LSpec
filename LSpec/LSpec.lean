@@ -33,7 +33,7 @@ another list of results (given as input by the caller).
 -/
 def runLSpec (results : List (String × Bool)) : LSpec → List (String × Bool)
   | .more d a rel next => (d, rel a) :: (runLSpec results next)
-  | .done             => results.reverse
+  | .done              => results.reverse
 
 /--
 Generates a report for all the results in a `LSpec` test,
