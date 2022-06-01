@@ -1,3 +1,5 @@
+import LSpec -- forcing oleans generation
+
 open System in
 partial def getFilePaths
   (fp : FilePath) (ext : String) (acc : List FilePath := []) :
