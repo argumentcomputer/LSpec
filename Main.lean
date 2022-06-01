@@ -37,7 +37,7 @@ def main : IO UInt32 := do
     testCases := testCases.concat testCase
 
   if testCases.isEmpty then
-    IO.println "\nNo tests to run"
+    IO.println "\nNo more tests to run"
     return 0
 
   let mut allPassed : Bool := true

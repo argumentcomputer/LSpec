@@ -113,8 +113,44 @@ your project and then:
 
 1. Add Lean files similar to the `Tests.lean` example above
 2. Compile the LSpec binary with `lake compile LSpec`
-3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`, which searches
-for and runs Lean files inside `Tests` recursively (yes, you can add folders
-inside `Tests` and create your own file structure)
+3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`
 
-Note: this flow can be automated with CI flows.
+The `lspec` binary triggers a `lake build` automatically, which takes care of
+interactive tests created with the `#lspec` command.
+
+After building your package, the `lspec` binary searches for and runs Lean files
+inside `Tests` recursively (yes, you can add folders inside `Tests` and create
+your own file structure).
+
+For this to work, all of your Lean files used in the tests must be built when
+`lake build` is called.
+
+## Using LSpec on CI
+
+To integrate LSpec to GitHub workflows, create the file
+`.github/workflows/lspec.yml` with the content:
+
+```yml
+name: "LSpec CI"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: install elan
+        run: |
+          set -o pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v1.3.1/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - uses: actions/checkout@v2
+      - name: build LSpec
+        run: lake build LSpec
+      - name: run LSpec
+        run: ./lean_packages/LSpec/build/bin/lspec
+```
