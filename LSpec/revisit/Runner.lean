@@ -1,7 +1,7 @@
-import LSpec.archive.Spec
-import LSpec.archive.Meta
-import LSpec.archive.WriterT
-import LSpec.archive.Tree
+import LSpec.revisit.Spec
+import LSpec.revisit.Meta
+import LSpec.revisit.WriterT
+import LSpec.revisit.Tree
 
 /-
 Structure for a test item in a test suite. Contains everything needed to run a test.

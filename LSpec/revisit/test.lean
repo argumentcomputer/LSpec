@@ -1,5 +1,5 @@
-import LSpec.archive.Meta
-import LSpec.archive.Runner
+import LSpec.revisit.Meta
+import LSpec.revisit.Runner
 
 namespace test1
 
