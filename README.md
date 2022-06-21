@@ -4,30 +4,25 @@ A Testing Framework for Lean
 
 ## Usage
 
-There are two ways to use LSpec: via the `#lspec` command and via the `lspec`
-function. Both become available once you `import LSpec`.
+There are two ways to use LSpec: via the `#lspec` command and via the `lspec` function. Both become available once you `import LSpec`.
 
-The former is used when you want to test a function in the same file you define
-it. If the test fails, an error is thrown, which can interrupt the `lake build`
-command in your lib that uses LSpec as a dependency.
+Use the former when you want to test a function in the same file it is defined. If you use `LSpec` as a dependency, a test failure shall interrupt the execution of `lake build` command and throw an error visible in the editor.
 
-The latter is meant for writing tests on a separate file, which can then be run
-independently with the `lspec` binary. We'll see more about it later.
+The latter is for writing tests in a separate test file. Test files can be ran
+independently with the `lspec` binary, as shown later.
 
 ## The `LSpec` and `Rel` types
 
-`LSpec` is the basic structure used to encode tests. We can create an term with
-type `LSpec` by using the `it` function, which is described below.
+`LSpec` is the basic structure used to encode tests. We can create a term with type `LSpec` by using the `it` function described below.
 
-`Rel` represents an assertion of some kind. This is very general; here are some
-examples:
+`Rel` represents an assertion of some kind. This is very general; here are some examples:
 
 ```lean
 def shouldBe [BEq α] (a' : α) : Rel α :=
   fun a => a == a'
 ```
 
-This predicate simply asserts that the input `a'` should be some value `a`.
+This simple predicate asserts that the input `a'` should be some value `a`.
 
 We also define:
 ```lean
@@ -41,8 +36,7 @@ def shouldNotBeEmpty : Rel (List α) :=
   fun l => not l.isEmpty
 ```
 
-These are just some of the most basic assertions that are provided.
-One can easily define some custom assertion type for their own needs.
+These are just some of the most trivial assertions. For the time being, we do not provide many more, although it can change. That said, one can easily define some custom assertion type for their own needs.
 
 ## The `it` helper function
 
@@ -50,8 +44,8 @@ One can easily define some custom assertion type for their own needs.
 requires four arguments:
 
 1. `descr : String`: a discription of the test
-2. `val : α`: the value being tested
-3. `rel : Rel α`: an assertion that `a` is being tested on
+2. `val : α`: the value tested
+3. `rel : Rel α`: an assertion that `a` is tested on
 4. `next : LSpec`: the next test (also defined by an `it`);
 the default option `done` represents no further tests.
 
@@ -64,11 +58,9 @@ def twoTests : LSpec :=
 
 ## The `#lspec` command
 
-The `#lspec` command allows you to test interactively in a file.
-It requires one argument `foo : LSpec`.
+The `#lspec` command allows you to test interactively in a file. It requires one argument `foo : LSpec`.
 
-The command will throw an error if the type of the argument is not `LSpec` or
-if the test fails.
+The command will throw an error if the type of the argument is not `LSpec` or if the test fails.
 
 For example:
 
@@ -80,13 +72,9 @@ Will output `✓ it knows equality` and succeed.
 
 ## The `lspec` function
 
-The `lspec` function is for writing tests on a separate file, and represents the
-result of one `LSpec` test. It requires two arguments, a description of the
-tests and the `LSpec` test being run.
+The `lspec` function is for writing tests in a separate file, and represents the result of one `LSpec` test suite. As discussed earlier, one can chain `LSpec` tests by providing the next test as the last argument of `it` function. `lspec` funciton requires two arguments, a description of the tests and the `LSpec` to run.
 
-For example, take `twoTests` we defined above. Then we can create a standalone
-`Tests.lean` file:
-
+For example, take `twoTests` we defined above. Then we can create a standalone `Tests.lean` file:
 ```lean
 import LSpec
 
@@ -107,20 +95,15 @@ Testing that: some description
 
 ## The `lspec` binary
 
-Now suppose you want to create multiple test files, each with their own test
-suite. You just need to create a folder called `Tests` in the root directory of
-your project and then:
+Suppose you want to create multiple test files, each with their own test suite. Create a folder called `Tests` in the root directory of your project and then:
 
 1. Add Lean files similar to the `Tests.lean` example above
 2. Compile the LSpec binary with `lake compile LSpec`
 3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`
 
-The `lspec` binary triggers a `lake build` automatically, which takes care of
-interactive tests created with the `#lspec` command.
+The `lspec` binary triggers a `lake build` automatically, which takes care of interactive tests created with the `#lspec` command.
 
-After building your package, the `lspec` binary searches for and runs Lean files
-inside `Tests` recursively (yes, you can add folders inside `Tests` and create
-your own file structure).
+After building your package, the `lspec` binary searches for and recursively runs Lean files inside `Tests` directory. It allows to add folders inside `Tests` to create your own file structure.
 
 For this to work, all of your Lean files used in the tests must be built when
 `lake build` is called.
