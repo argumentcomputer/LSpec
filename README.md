@@ -109,7 +109,7 @@ Suppose you want to create multiple test files, each with a separate test suite.
 Create a folder called `Tests` in the root directory of your project and then:
 
 1. Add Lean files similar to the `Tests.lean` example above.
-2. Compile the LSpec binary with `lake compile LSpec`.
+2. Compile the LSpec binary with `lake build LSpec`.
 3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`.
 
 The `lspec` binary triggers a `lake build` automatically, which takes care of interactive tests created with the `#lspec` command.
