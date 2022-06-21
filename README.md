@@ -11,7 +11,7 @@ Use the former when you want to test a function in the same file it is defined.
 If you use `LSpec` as a dependency, a test failure shall interrupt the execution of the `lake build` command and throw an error visible in the editor.
 
 The latter is for writing tests in a separate test file.
-Test files can be ran independently with the `lspec` binary, as shown later.
+Test files can be run independently with the `lspec` binary, as shown later.
 
 ## The `LSpec` and `Rel` types
 
@@ -81,7 +81,7 @@ Will output `✓ it knows equality` and succeed.
 
 The `lspec` function is for writing tests in a separate file and represents the result of one `LSpec` test suite.
 As discussed earlier, one can chain `LSpec` tests by providing the next test as the last argument of the `it` function.
-`lspec` function requires two arguments, a description of the tests and the `LSpec` to run.
+The `lspec` function requires two arguments, a description of the tests and the `LSpec` to run.
 
 For example, take `twoTests` we defined above.
 Then we can create a standalone `Tests.lean` file:
