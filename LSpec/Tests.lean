@@ -1,11 +1,18 @@
 import LSpec
 
 #lspec do
-  test "Nat equality" <| 4 = 4
-  test "Nat inequality" <| 4 ≠ 5
-  test "bool equality" <| 42 == 42
-  test "list length" <| [42].length = 1
-  test "list nonempty" <| ¬ [42].isEmpty
+  test "Nat equality" (4 = 4)
+  test "Nat inequality" (4 ≠ 5)
+  test "bool equality" (42 == 42)
+  test "list length" ([42].length = 1)
+  test "list nonempty" ¬ [42].isEmpty
+
+#lspec
+  test' "Nat equality" (4 = 4) $
+  test' "Nat inequality" (4 ≠ 5) $
+  test' "bool equality" (42 == 42) $
+  test' "list length" ([42].length = 1) $
+  test' "list nonempty" ¬ [42].isEmpty
 
 /--
 Testing using `#lspec` with something of type `LSpec`.

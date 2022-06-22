@@ -21,6 +21,13 @@ instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x ≠ y) :=
   else
     .isFalse h s!"Both equal to:{(repr x).indentD}"
 
+/--
+A fancier example of `TDecidable` instance that allows us to write:
+
+```lean
+#lspec test "forall n < 10, n - 5 < 5" $ ∀ n, n < 10 → n - 5 < 5
+```
+-/
 instance Nat.tdecidable_forall_lt
   (b : Nat) (p : Nat → Prop)
   [d : (n : Nat) → TDecidable (p n)] :
