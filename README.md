@@ -19,7 +19,7 @@ Test files can be run independently with the `lspec` binary, as shown later.
 In order to instantiate terms of `TestSeq`, use one of the two following helper functions:
 
 * `test`: consumes a description and a proposition;
-* `test'`: consumes a description, a proposition an (optional) extra `TestSeq`.
+* `test'`: consumes a description, a proposition and an (optional) extra `TestSeq`.
 Use it if you don't want to use `do` notation.
 
 The propositions above, however, must have their own instances of `TDecidable`.
@@ -36,6 +36,8 @@ instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
   else
     .isFalse h s!"Not equal: {repr x} and {repr y}"
 ```
+
+The custom failure message is optional.
 
 There are more examples of `TDecidable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
 Such instances are automatically imported via `import LSpec`.
