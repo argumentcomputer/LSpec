@@ -74,7 +74,7 @@ This function is meant to be called from a custom command. It runs in
 def LSpec.runInTermElabMAsUnit (t : LSpec) : TermElabM Unit := do
   let (success?, msg) := t.runAndCompile
   if success? then
-    logInfo msg
+    Lean.logInfo msg
   else
     throwError msg
 

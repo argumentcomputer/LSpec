@@ -1,6 +1,7 @@
 import Lake
 open Lake DSL
 
-package LSpec {
-  binName := "lspec"
+package LSpec
+
+lean_exe lspec {
 }
