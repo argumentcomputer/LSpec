@@ -1,6 +1,6 @@
 # LSpec
 
-A Testing Framework for Lean
+A testing framework for Lean 4, inspired by Haskell's [Hspec](https://hspec.github.io/) package.
 
 ## Usage
 
@@ -13,97 +13,73 @@ If you use `LSpec` as a dependency, a test failure shall interrupt the execution
 The latter is for writing tests in a separate test file.
 Test files can be run independently with the `lspec` binary, as shown later.
 
-## The `LSpec` and `Rel` types
+### The `TestSeq` type
 
-`LSpec` is the basic structure used to encode tests.
-We can create a term with the type `LSpec` by using the `it` function described below.
+`TestSeq` is used to represent sequences of tests.
+In order to instantiate terms of `TestSeq`, use one of the two following helper functions:
 
-`Rel` represents an assertion of some kind.
-This is very general; here are some examples:
+* `test`: consumes a description and a proposition;
+* `test'`: consumes a description, a proposition an (optional) extra `TestSeq`.
+Use it if you don't want to use `do` notation.
+
+The propositions above, however, must have their own instances of `TDecidable`.
+
+### The `TDecidable` class
+
+`TDecidable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
+This is an example of a simple instance for decidability of equalities:
 
 ```lean
-def shouldBe [BEq α] (a' : α) : Rel α :=
-  fun a => a == a'
+instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
+  if h : x = y then
+    .isTrue h
+  else
+    .isFalse h s!"Not equal: {repr x} and {repr y}"
 ```
 
-This simple predicate asserts that the input `a'` should be some value `a`.
+There are more examples of `TDecidable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
+Such instances are automatically imported via `import LSpec`.
 
-We also define:
-```lean
-def shouldNotBe [BEq α] (a' : α) : Rel α :=
-  fun a => not $ a == a'
+The user is, of course, free to provide their own instances.
 
-def shouldBeEmpty : Rel (List α) :=
-  fun l => l.isEmpty
-
-def shouldNotBeEmpty : Rel (List α) :=
-  fun l => not l.isEmpty
-```
-
-These are just some of the most trivial assertions.
-For the time being, we do not provide many more, although it can change.
-That said, one can easily define a custom assertion type for their own needs.
-
-## The `it` helper function
-
-`it` creates an instance of an `LSpec` and represents a single test.
-`it` requires four arguments:
-
-1. `descr : String`: a description of the test
-2. `val : α`: the value tested
-3. `rel : Rel α`: an assertion that `a` is tested on
-4. `next : LSpec`: the next test (also defined by an `it`);
-the default option `done` represents no further tests.
-
-For example, we could define two simple tests:
-```lean
-def twoTests : LSpec :=
-  it "knows equality" 42 (shouldBe 42) $
-  it "knows lists" [42].length (shouldBe 1)
-```
-
-## The `#lspec` command
+### The `#lspec` command
 
 The `#lspec` command allows you to test interactively in a file.
-It requires one argument `foo : LSpec`.
+It requires one argument `t : TestSeq`.
 
-The command will throw an error if the type of the argument is not `LSpec` or if the test fails.
+Examples:
 
-For example:
-
-```lean
-#lspec it "knows equality" 4 (shouldBe 4)
-```
-
-Will output `✓ it knows equality` and succeed.
-
-## The `lspec` function
-
-The `lspec` function is for writing tests in a separate file and represents the result of one `LSpec` test suite.
-As discussed earlier, one can chain `LSpec` tests by providing the next test as the last argument of the `it` function.
-The `lspec` function requires two arguments, a description of the tests and the `LSpec` to run.
-
-For example, take `twoTests` we defined above.
-Then we can create a standalone `Tests.lean` file:
 ```lean
 import LSpec
 
-def twoTests : LSpec :=
-  it "knows equality" 42 (shouldBe 42) $
-  it "knows lists" [42].length (shouldBe 1)
+#lspec do
+  test "four equals four" (4 = 4)
+  test "five equals five" (5 = 5)
 
-def main :=
-  lspec "some description" twoTests
+#lspec
+  test' "four equals four" (4 = 4) $
+  test' "five equals five" (5 = 5)
+```
+
+### The `lspec` function
+
+The `lspec` function is for writing tests in a separate file and represents the result of one `LSpec` test suite.
+Similarly to the `#lspec` command, it requires an argument of type `TestSeq`.
+
+For example, we can create a standalone `Tests.lean` file:
+```lean
+import LSpec
+
+def main := lspec $
+  test "four equals four" (4 = 4)
 ```
 
 If you run `Tests.lean`, the expected output should be:
 ```lean
-Testing that: some description
-✓ it knows equality
-✓ it knows lists
+✓ four equals four
 ```
 
-## The `lspec` binary
+### The `lspec` binary
 
 Suppose you want to create multiple test files, each with a separate test suite.
 Create a folder called `Tests` in the root directory of your project and then:
