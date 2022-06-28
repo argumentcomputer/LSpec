@@ -99,7 +99,7 @@ def main := lspec $
   test "four equals four" (4 = 4)
 ```
 -/
-def lspec (t : LSpec) (_ : List String := []) : IO UInt32 := do
+def lspec (t : LSpec) : IO UInt32 := do
   let (success?, msg) := t.runAndCompile
   if success? then
     IO.println  msg; return 0

@@ -55,3 +55,21 @@ private def test2 := test "true" true
 --     1
 --   and
 --     0
+
+def fourIO : IO Nat :=
+  return 4
+
+def fiveIO : IO Nat :=
+  return 5
+
+def main : IO UInt32 := do
+  let four ← fourIO
+  let five ← fiveIO
+  lspec do
+    test "fourIO equals 4" (four = 4)
+    test "fiveIO equals 5" (five = 5)
+
+#eval main
+-- ✓ fourIO equals 4
+-- ✓ fiveIO equals 5
+-- 0

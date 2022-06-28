@@ -81,6 +81,26 @@ If you run `Tests.lean`, the expected output should be:
 ✓ four equals four
 ```
 
+#### Running tests with IO
+
+We can use the `lspec` function to run tests with values that come from
+computations in `IO` like this:
+
+```lean
+def fourIO : IO Nat :=
+  return 4
+
+def fiveIO : IO Nat :=
+  return 5
+
+def main : IO UInt32 := do
+  let four ← fourIO
+  let five ← fiveIO
+  lspec do
+    test "fourIO equals 4" (four = 4)
+    test "fiveIO equals 5" (five = 5)
+```
+
 ### The `lspec` binary
 
 Suppose you want to create multiple test files, each with a separate test suite.
