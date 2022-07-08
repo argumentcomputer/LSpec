@@ -8,6 +8,7 @@ class inductive TDecidable (p : Prop) where
   | isFalse (h : ¬ p) (msg : Option Std.Format := none)
   | isTrue  (h : p)
 
+/-- A default `TDecidable` instance with low priority -/
 instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
   match d with
   | isFalse h => .isFalse h f!"Evaluated to false"
@@ -18,12 +19,8 @@ inductive TestSeq
   | more : String → (prop : Prop) → TDecidable prop → TestSeq → TestSeq
   | done
 
-/-- `test` is a single basic test. -/
-def test (descr : String) (p : Prop) [TDecidable p] : TestSeq :=
-  .more descr p inferInstance .done
-
-/-- `test'` allows the composition of tests without needing `do` notation. -/
-def test' (descr : String) (p : Prop) [TDecidable p]
+/-- `test` allows the composition of tests. -/
+def test (descr : String) (p : Prop) [TDecidable p]
     (next : TestSeq := .done) : TestSeq :=
   .more descr p inferInstance next
 
@@ -65,18 +62,22 @@ def LSpec.runAndCompile (t : LSpec) : Bool × String :=
   (res.foldl (init := true) fun acc (_, r, _) => acc && r,
     "\n".intercalate <| res.map formatLSpecResult)
 
-open Lean.Elab in
+/-- Runs a `LSpec` for generic purposes. -/
+def lspec (t : LSpec) : Except String String :=
+  match t.runAndCompile with
+  | (true,  msg) => return msg
+  | (false, msg) => throw msg
+
 /--
 Runs a `LSpec` with an output meant for the Lean Infoview.
 
 This function is meant to be called from a custom command. It runs in
-`TermElabM` to have access to `logInfo` and `throwError` -/
-def LSpec.runInTermElabMAsUnit (t : LSpec) : TermElabM Unit := do
-  let (success?, msg) := t.runAndCompile
-  if success? then
-    logInfo msg
-  else
-    throwError msg
+`TermElabM` to have access to `logInfo` and `throwError`.
+-/
+def LSpec.runInTermElabMAsUnit (t : LSpec) : Lean.Elab.TermElabM Unit :=
+  match lspec t with
+  | .ok    msg => Lean.logInfo msg
+  | .error msg => throwError msg
 
 /--
 A custom command to run `LSpec` tests. Example:
@@ -95,13 +96,11 @@ This function is designed to be plugged to a `main` function from a Lean file
 that can be compiled. Example:
 
 ```lean
-def main := lspec $
+def main := lspecIO $
   test "four equals four" (4 = 4)
 ```
 -/
-def lspec (t : LSpec) : IO UInt32 := do
-  let (success?, msg) := t.runAndCompile
-  if success? then
-    IO.println  msg; return 0
-  else
-    IO.eprintln msg; return 1
+def lspecIO (t : LSpec) : IO UInt32 := do
+  match lspec t with
+  | .ok    msg => IO.println  msg; return 0
+  | .error msg => IO.eprintln msg; return 1
