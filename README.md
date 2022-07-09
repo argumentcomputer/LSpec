@@ -108,16 +108,15 @@ def main : IO UInt32 := do
 The LSpec package also provides a binary that runs test files automatically.
 The binary becomes available by running `lake build LSpec`, which will generate the file `./lean_packages/LSpec/build/bin/lspec`.
 
-The `lspec` binary can take multiple arguments, each referencing a Lean file or a directory of Lean files.
-For each Lean file present in the arguments passed to the binary, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
+The `lspec` binary recursively searches for Lean files inside a `Tests` directory.
+For each Lean file present `Tests`, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
 
-For instance, suppose that you call `./.../lspec F1.lean Some/Path` and the directory `Some/Path` contains the files `F2.lean` and `F3.lean`.
+For instance, suppose that the directory `Tests` contains the files `Tests/F1.lean` and `Tests/Some/Dir/F2.lean`.
 In this case, you need to add the following lines to your `lakefile.lean`:
 
 ```lean
-lean_exe F1
-lean_exe Some.Path.F2
-lean_exe Some.Path.F3
+lean_exe Tests.F1
+lean_exe Tests.Some.Dir.F2
 ```
 
 ### Using LSpec on CI

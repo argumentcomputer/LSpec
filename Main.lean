@@ -24,19 +24,17 @@ def runCmd (descr cmd : String) (args : Array String := #[]) : IO Bool := do
     IO.eprintln out.stderr
     return true
 
-def main (dirs : List String) : IO UInt32 := do
+def main : IO UInt32 := do
   if ← runCmd s!"Building project" "lake" #["build"] then
     return 1
   let mut exeFiles : List String := []
-  let dirs := dirs.map fun d => d.splitOn "." |>.head!
-  for dir in dirs do
-    for testCase in (← getFilePaths ⟨dir⟩).map
-        fun fp => (fp.toString.splitOn ".").head! do
-      let exe := testCase.replace "/" "-"
-      let pkg := testCase.replace "/" "."
-      if ← runCmd s!"Building {exe}" "lake" #["build", pkg] then
-        return (1 : UInt32)
-      exeFiles := exe :: exeFiles
+  for testCase in (← getFilePaths ⟨"Tests"⟩).map
+      fun fp => (fp.toString.splitOn ".").head! do
+    let exe := testCase.replace "/" "-"
+    let pkg := testCase.replace "/" "."
+    if ← runCmd s!"Building {exe}" "lake" #["build", pkg] then
+      return (1 : UInt32)
+    exeFiles := exe :: exeFiles
   let mut hasFailure : Bool := false
   for exe in exeFiles.reverse do
     hasFailure := hasFailure ||
