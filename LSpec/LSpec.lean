@@ -19,6 +19,7 @@ testing frameworks
 
 namespace LSpec
 
+open Lean
 /--
 # TODO: No longer accurate
 
