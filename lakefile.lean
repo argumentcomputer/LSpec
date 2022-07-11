@@ -1,6 +1,9 @@
 import Lake
 open Lake DSL
 
-package LSpec {
-  binName := "lspec"
+package LSpec
+
+@[defaultTarget]
+lean_exe lspec {
+  root := `Main
 }

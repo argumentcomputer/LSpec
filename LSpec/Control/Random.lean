@@ -32,7 +32,7 @@ defining objects that can be created randomly.
 abbrev RandT (g : Type) := StateM (ULift g)
 
 instance inhabitedRandT [Inhabited g] [Inhabited α] : Inhabited (RandT g α) where 
-  default := fun x => pure (default, .up default)
+  default := fun _ => pure (default, .up default)
 
 /-- A monad to generate random objects using the generator type `Rng` -/
 abbrev Rand (α : Type u) := RandT StdGen α

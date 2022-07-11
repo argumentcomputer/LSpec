@@ -4,29 +4,25 @@ A testing framework for Lean 4, inspired by Haskell's [Hspec](https://hspec.gith
 
 ## Usage
 
-There are two ways to use LSpec: via the `#lspec` command and the `lspec` function.
-Both become available once you `import LSpec`.
+### Composing tests
 
-Use the former when you want to test a function in the same file it is defined.
-If you use `LSpec` as a dependency, a test failure shall interrupt the execution of the `lake build` command and throw an error visible in the editor.
+Sequences of tests are represented by the `TestSeq` datatype.
+In order to instantiate terms of `TestSeq`, use the `test` helper function:
 
-The latter is for writing tests in a separate test file.
-Test files can be run independently with the `lspec` binary, as shown later.
+```lean
+#check
+  test "Nat equality" (4 = 4) $
+  test "Nat inequality" (4 ≠ 5)
+-- test "Nat equality" (4 = 4) (test "Nat inequality" (4 ≠ 5)) : TestSeq
+```
 
-### The `TestSeq` type
-
-`TestSeq` is used to represent sequences of tests.
-In order to instantiate terms of `TestSeq`, use one of the two following helper functions:
-
-* `test`: consumes a description and a proposition;
-* `test'`: consumes a description, a proposition and an (optional) extra `TestSeq`.
-Use it if you don't want to use `do` notation.
-
-The propositions above, however, must have their own instances of `TDecidable`.
+`test` consumes a description a proposition and a next test
+The proposition, however, must have its own instance of `TDecidable`.
 
 ### The `TDecidable` class
 
 `TDecidable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
+
 This is an example of a simple instance for decidability of equalities:
 
 ```lean
@@ -44,47 +40,53 @@ Such instances are automatically imported via `import LSpec`.
 
 The user is, of course, free to provide their own instances.
 
-### The `#lspec` command
+### Actually running the tests
+
+#### The `#lspec` command
 
 The `#lspec` command allows you to test interactively in a file.
-It requires one argument `t : TestSeq`.
 
 Examples:
 
 ```lean
-import LSpec
+#lspec
+  test "four equals four" (4 = 4) $
+  test "five equals five" (5 = 5)
+-- ✓ four equals four
+-- ✓ five equals five
 
 #lspec do
   test "four equals four" (4 = 4)
   test "five equals five" (5 = 5)
-
-#lspec
-  test' "four equals four" (4 = 4) $
-  test' "five equals five" (5 = 5)
+-- ✓ four equals four
+-- ✓ five equals five
 ```
 
-### The `lspec` function
+An important note is that a failing test will raise an error, interrupting the building process.
 
-The `lspec` function is for writing tests in a separate file and represents the result of one `LSpec` test suite.
-Similarly to the `#lspec` command, it requires an argument of type `TestSeq`.
+The fact that test execution happens in the `LSpec` monad allows the use of `do` notation, as seen above.
+So one can (ab)use the `do` notation run multiple tests without dollar signs.
+In such case, every call to `test` creates a `TestSeq` with a single test.
 
-For example, we can create a standalone `Tests.lean` file:
+#### The `lspec` function
+
+The `lspec` function can be used for generic purposes inside other functions.
+It returns a term of type `Except String String`, representing success or failure, with a message for each case.
+
 ```lean
-import LSpec
+def tests :=
+  test "four equals four" (4 = 4) $
+  test "five equals five" (5 = 5)
 
-def main := lspec $
-  test "four equals four" (4 = 4)
+def foo : IO Unit := do
+  match lspec tests with
+  | .ok    msg => IO.println msg
+  | .error msg => IO.eprintln msg
 ```
 
-If you run `Tests.lean`, the expected output should be:
-```lean
-✓ four equals four
-```
+#### The `lspecIO` function
 
-#### Running tests with IO
-
-We can use the `lspec` function to run tests with values that come from
-computations in `IO` like this:
+`lspecIO` is meant to be used in files to be compiled and integrated in a testing infrastructure, as shown soon.
 
 ```lean
 def fourIO : IO Nat :=
@@ -101,23 +103,23 @@ def main : IO UInt32 := do
     test "fiveIO equals 5" (five = 5)
 ```
 
-### The `lspec` binary
+## Setting up a testing infra
 
-Suppose you want to create multiple test files, each with a separate test suite.
-Create a folder called `Tests` in the root directory of your project and then:
+The LSpec package also provides a binary that runs test files automatically.
+The binary becomes available by running `lake build LSpec`, which will generate the file `./lean_packages/LSpec/build/bin/lspec`.
 
-1. Add Lean files similar to the `Tests.lean` example above.
-2. Compile the LSpec binary with `lake build LSpec`.
-3. Run the binary with `./lean_packages/LSpec/build/bin/lspec`.
+The `lspec` binary recursively searches for Lean files inside a `Tests` directory.
+For each Lean file present `Tests`, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
 
-The `lspec` binary triggers a `lake build` automatically, which takes care of interactive tests created with the `#lspec` command.
+For instance, suppose that the directory `Tests` contains the files `Tests/F1.lean` and `Tests/Some/Dir/F2.lean`.
+In this case, you need to add the following lines to your `lakefile.lean`:
 
-After building your package, the `lspec` binary searches for and recursively runs Lean files inside the `Tests` directory.
-It allows adding folders inside `Tests` to create a custom file structure.
+```lean
+lean_exe Tests.F1
+lean_exe Tests.Some.Dir.F2
+```
 
-For this to work, all of your Lean files used in the tests must be built when `lake build` is called.
-
-## Using LSpec on CI
+### Using LSpec on CI
 
 To integrate LSpec to GitHub workflows, create the file `.github/workflows/lspec.yml` with the content:
 
