@@ -25,8 +25,6 @@ def runCmd (descr cmd : String) (args : Array String := #[]) : IO Bool := do
     return true
 
 def main : IO UInt32 := do
-  if ← runCmd s!"Building project" "lake" #["build"] then
-    return 1
   let mut exeFiles : List String := []
   for testCase in (← getFilePaths ⟨"Tests"⟩).map
       fun fp => (fp.toString.splitOn ".").head! do
