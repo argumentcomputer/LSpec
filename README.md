@@ -106,7 +106,7 @@ def main : IO UInt32 := do
 ## Setting up a testing infra
 
 The LSpec package also provides a binary that runs test files automatically.
-The binary becomes available by running `lake build LSpec`, which will generate the file `./lean_packages/LSpec/build/bin/lspec`.
+The binary becomes available by running `lake build lspec`, which will generate the file `lean_packages/LSpec/build/bin/lspec`.
 
 The `lspec` binary recursively searches for Lean files inside a `Tests` directory.
 For each Lean file present `Tests`, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
@@ -142,8 +142,8 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
-      - name: build LSpec
-        run: lake build LSpec
+      - name: build LSpec binary
+        run: lake build lspec
       - name: run LSpec
         run: ./lean_packages/LSpec/build/bin/lspec
 ```
