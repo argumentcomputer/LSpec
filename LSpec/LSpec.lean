@@ -6,25 +6,26 @@ A variant of `Decidable` for tests. In the failing case, it may contain an
 explanatory message.
 -/
 class inductive TDecidable (p : Prop) where
-  | isTrue  (h : p)
-  | isFalse (h : ¬ p) (msg : Option Std.Format := none)
-  | isFailure (msg : Option Std.Format := none)
+  | isTrue  (h : Unit ⊕' p)
+  | isFalse (h : Unit ⊕' ¬ p) (msg : Option Std.Format := none)
 
 /-- A default `TDecidable` instance with low priority. -/
 instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
   match d with
-  | isFalse h => .isFalse h f!"Evaluated to false"
-  | isTrue  h => .isTrue  h
+  | isFalse h => .isFalse (.inr h) f!"Evaluated to false"
+  | isTrue  h => .isTrue  (.inr h)
 
-open SlimCheck in 
-instance (priority := low) (p : Prop) [Testable p] : TDecidable p :=
+open SlimCheck Decorations in 
+instance (priority := low) 
+  (p : Prop) [Testable p] : 
+    TDecidable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
-  | TestResult.success (PSum.inr h) => .isTrue h
-  | TestResult.success (PSum.inl _) => .isFailure none
-  | TestResult.gaveUp n => .isFailure s!"Gave up {n} times"
+  | TestResult.success (.inr h) => .isTrue (.inr h)
+  | TestResult.success (.inl u) => .isTrue (.inl ())
+  | TestResult.gaveUp n => .isFalse (.inl ()) s!"Gave up {n} times"
   | TestResult.failure h xs n => 
-    .isFalse h $ Testable.formatFailure "Found problems!" xs n
+    .isFalse (.inr h) $ Testable.formatFailure "Found problems!" xs n
 
 /-- The datatype used to represent a sequence of tests -/
 inductive TestSeq
@@ -44,6 +45,13 @@ def test (descr : String) (p : Prop) [TDecidable p]
     (next : TestSeq := .done) : TestSeq :=
   .more descr p inferInstance next
 
+open SlimCheck Decorations in 
+def check (descr : String) 
+  (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
+  (next : TestSeq := .done) : 
+    TestSeq :=
+  test descr p' next
+
 abbrev LSpecResult := String × Bool × Option Std.Format
 
 /-- `LSpec` is the monad used to run tests and record their results. -/
@@ -53,7 +61,6 @@ abbrev LSpec := StateT (List LSpecResult) Id Unit
 def TestSeq.toLSpec : TestSeq → LSpec
   | .more d _ (.isTrue _) n    => do set ((d, true, none) :: (← get)); n.toLSpec
   | .more d _ (.isFalse _ m) n => do set ((d, false, m) :: (← get));   n.toLSpec
-  | .more d _ (.isFailure m) n => do set ((d, false, m) :: (← get));   n.toLSpec
   | .done                      => pure ()
 
 instance : Coe TestSeq LSpec where
@@ -129,7 +136,7 @@ def lspecIO (t : LSpec) : IO UInt32 := do
 inductive ExpectationFailure (exp got : String) : Prop
 
 instance : TDecidable (ExpectationFailure exp got) :=
-  .isFailure s!"Expected '{exp}' but got '{got}'"
+  .isFalse (.inl ()) s!"Expected '{exp}' but got '{got}'"
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
 def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :

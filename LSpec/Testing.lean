@@ -56,6 +56,8 @@ def test2 := test "true" true
 --   and
 --     0
 
+#lspec check "wat" $ ∀ n : Nat, n = n
+
 def fourIO : IO Nat :=
   return 4
 

@@ -5,21 +5,21 @@ def formatBinaryError (m : String) (x y : α) [Repr α] : Std.Format :=
 
 instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
   if h : x = y then
-    .isTrue h
+    .isTrue (.inr h)
   else
-    .isFalse h $ formatBinaryError "Expected to be equal:" x y
+    .isFalse (.inr h) $ formatBinaryError "Expected to be equal:" x y
 
 instance (x y : α) [BEq α] [Repr α] : TDecidable (x == y) :=
   if h : x == y then
-    .isTrue h
+    .isTrue (.inr h)
   else
-    .isFalse h $ formatBinaryError "Expected to be equal:" x y
+    .isFalse (.inr h) $ formatBinaryError "Expected to be equal:" x y
 
 instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x ≠ y) :=
   if h : x ≠ y then
-    .isTrue h
+    .isTrue (.inr h)
   else
-    .isFalse h s!"Both equal to:{(repr x).indentD}"
+    .isFalse (.inr h) s!"Both equal to:{(repr x).indentD}"
 
 /--
 A fancier example of `TDecidable` instance that allows us to write:
@@ -33,22 +33,34 @@ instance Nat.tdecidable_forall_lt
   [d : (n : Nat) → TDecidable (p n)] :
     TDecidable (∀ n, n < b → p n) :=
   match b with
-  | 0     => .isTrue (by simp [Nat.not_lt_zero])
+  | 0     => .isTrue $ .inr (by simp [Nat.not_lt_zero])
   | b + 1 =>
     match tdecidable_forall_lt b p with
     | .isTrue h =>
-      match d b with
-      | .isTrue hb =>
-        .isTrue $ by
+      match h, d b with
+      | .inr h, .isTrue hb =>
+        .isTrue $ match hb with 
+        | .inl u => .inl () 
+        | .inr hb => .inr $ by
           intros n hn
           cases Nat.eq_or_lt_of_le (Nat.le_of_lt_succ hn) with
           | inl hl => cases hl; assumption
           | inr => apply h; assumption
-      | .isFalse hb msg =>
-        .isFalse (λ h => hb (h _ (Nat.lt_succ_self _))) $
+      | .inr h, .isFalse hb msg =>
+        .isFalse (match hb with 
+        | .inl u => .inl u
+        | .inr hb => .inr $ λ h => hb (h _ (Nat.lt_succ_self _))) $
           match msg with
           | some msg => s!"Fails on input {b}. {msg}"
           | none     => s!"Fails on input {b}."
-      | .isFailure msg => .isFailure msg
-    | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_step hn)) msg
-    | .isFailure msg => .isFailure msg
+      | .inl u, .isTrue hb => .isTrue $ .inl () 
+      | .inl u, .isFalse hb msg => 
+        .isFalse (.inl ()) $ 
+        match msg with
+        | some msg => s!"Fails on input {b}. {msg}"
+        | none     => s!"Fails on input {b}."
+    | .isFalse h msg => .isFalse (
+        match h with 
+        | .inl u => .inl u
+        | .inr h => .inr $ λ h' => h λ n hn => h' _ (Nat.le_step hn)
+      ) msg
