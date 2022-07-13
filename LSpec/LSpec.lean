@@ -5,8 +5,9 @@ A variant of `Decidable` for tests. In the failing case, it may contain an
 explanatory message.
 -/
 class inductive TDecidable (p : Prop) where
-  | isFalse (h : ¬ p) (msg : Option Std.Format := none)
   | isTrue  (h : p)
+  | isFalse (h : ¬ p) (msg : Option Std.Format := none)
+  | isFailure (msg : Option Std.Format := none)
 
 /-- A default `TDecidable` instance with low priority. -/
 instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
@@ -41,6 +42,7 @@ abbrev LSpec := StateT (List LSpecResult) Id Unit
 def TestSeq.toLSpec : TestSeq → LSpec
   | .more d _ (.isTrue _) n    => do set ((d, true, none) :: (← get)); n.toLSpec
   | .more d _ (.isFalse _ m) n => do set ((d, false, m) :: (← get));   n.toLSpec
+  | .more d _ (.isFailure m) n => do set ((d, false, m) :: (← get));   n.toLSpec
   | .done                      => pure ()
 
 instance : Coe TestSeq LSpec where
@@ -116,8 +118,7 @@ def lspecIO (t : LSpec) : IO UInt32 := do
 inductive ExpectationFailure (exp got : String) : Prop
 
 instance : TDecidable (ExpectationFailure exp got) :=
-  have failure : ¬ ExpectationFailure exp got := sorry
-  .isFalse failure s!"Expected '{exp}' but got '{got}'"
+  .isFailure s!"Expected '{exp}' but got '{got}'"
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
 def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :

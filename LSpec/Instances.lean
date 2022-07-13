@@ -49,4 +49,6 @@ instance Nat.tdecidable_forall_lt
           match msg with
           | some msg => s!"Fails on input {b}. {msg}"
           | none     => s!"Fails on input {b}."
+      | .isFailure msg => .isFailure msg
     | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_step hn)) msg
+    | .isFailure msg => .isFailure msg
