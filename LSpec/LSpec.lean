@@ -6,37 +6,41 @@ A variant of `Decidable` for tests. In the failing case, it may contain an
 explanatory message.
 -/
 class inductive TDecidable (p : Prop) where
-  | isFalse (h : ¬ p) (msg : Option Std.Format := none)
   | isTrue  (h : p)
+  | isFalse (h : ¬ p) (msg : Option Std.Format := none)
+  | isFailure (msg : Option Std.Format := none)
 
+/-- A default `TDecidable` instance with low priority. -/
 instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
   match d with
   | isFalse h => .isFalse h f!"Evaluated to false"
   | isTrue  h => .isTrue  h
 
 open SlimCheck in 
-instance (priority := low) (p : Prop) [t : Testable p] : TDecidable p :=
+instance (priority := low) (p : Prop) [Testable p] : TDecidable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
   | TestResult.success (PSum.inr h) => .isTrue h
-  | TestResult.success _ => .isFalse ""
-  -- if !cfg.quiet then IO.println "Success" else pure ()
-  | TestResult.gaveUp n => _
-  -- if !cfg.quiet then IO.println s!"Gave up {n} times"
-  | TestResult.failure _ xs n => _
-  -- throw (IO.userError $ formatFailure "Found problems!" xs n)
+  | TestResult.success (PSum.inl _) => .isFailure none
+  | TestResult.gaveUp n => .isFailure s!"Gave up {n} times"
+  | TestResult.failure h xs n => 
+    .isFalse h $ Testable.formatFailure "Found problems!" xs n
 
 /-- The datatype used to represent a sequence of tests -/
 inductive TestSeq
   | more : String → (prop : Prop) → TDecidable prop → TestSeq → TestSeq
   | done
 
-/-- `test` is a single basic test. -/
-def test (descr : String) (p : Prop) [TDecidable p] : TestSeq :=
-  .more descr p inferInstance .done
+/-- Appends two sequences of tests. -/
+def TestSeq.append : TestSeq → TestSeq → TestSeq
+  | done, t => t
+  | more d p i n, t' => more d p i $ n.append t'
 
-/-- `test'` allows the composition of tests without needing `do` notation. -/
-def test' (descr : String) (p : Prop) [TDecidable p]
+instance : Append TestSeq where
+  append := TestSeq.append
+
+/-- `test` allows the composition of tests. -/
+def test (descr : String) (p : Prop) [TDecidable p]
     (next : TestSeq := .done) : TestSeq :=
   .more descr p inferInstance next
 
@@ -49,6 +53,7 @@ abbrev LSpec := StateT (List LSpecResult) Id Unit
 def TestSeq.toLSpec : TestSeq → LSpec
   | .more d _ (.isTrue _) n    => do set ((d, true, none) :: (← get)); n.toLSpec
   | .more d _ (.isFalse _ m) n => do set ((d, false, m) :: (← get));   n.toLSpec
+  | .more d _ (.isFailure m) n => do set ((d, false, m) :: (← get));   n.toLSpec
   | .done                      => pure ()
 
 instance : Coe TestSeq LSpec where
@@ -78,18 +83,22 @@ def LSpec.runAndCompile (t : LSpec) : Bool × String :=
   (res.foldl (init := true) fun acc (_, r, _) => acc && r,
     "\n".intercalate <| res.map formatLSpecResult)
 
-open Lean.Elab in
+/-- Runs a `LSpec` for generic purposes. -/
+def lspec (t : LSpec) : Except String String :=
+  match t.runAndCompile with
+  | (true,  msg) => return msg
+  | (false, msg) => throw msg
+
 /--
 Runs a `LSpec` with an output meant for the Lean Infoview.
 
 This function is meant to be called from a custom command. It runs in
-`TermElabM` to have access to `logInfo` and `throwError` -/
-def LSpec.runInTermElabMAsUnit (t : LSpec) : TermElabM Unit := do
-  let (success?, msg) := t.runAndCompile
-  if success? then
-    logInfo msg
-  else
-    throwError msg
+`TermElabM` to have access to `logInfo` and `throwError`.
+-/
+def LSpec.runInTermElabMAsUnit (t : LSpec) : Lean.Elab.TermElabM Unit :=
+  match lspec t with
+  | .ok    msg => Lean.logInfo msg
+  | .error msg => throwError msg
 
 /--
 A custom command to run `LSpec` tests. Example:
@@ -108,13 +117,44 @@ This function is designed to be plugged to a `main` function from a Lean file
 that can be compiled. Example:
 
 ```lean
-def main := lspec $
+def main := lspecIO $
   test "four equals four" (4 = 4)
 ```
 -/
-def lspec (t : LSpec) : IO UInt32 := do
-  let (success?, msg) := t.runAndCompile
-  if success? then
-    IO.println  msg; return 0
-  else
-    IO.eprintln msg; return 1
+def lspecIO (t : LSpec) : IO UInt32 := do
+  match lspec t with
+  | .ok    msg => IO.println  msg; return 0
+  | .error msg => IO.eprintln msg; return 1
+
+inductive ExpectationFailure (exp got : String) : Prop
+
+instance : TDecidable (ExpectationFailure exp got) :=
+  .isFailure s!"Expected '{exp}' but got '{got}'"
+
+/-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
+def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :
+    TestSeq :=
+  match opt with
+  | none   => test descr (ExpectationFailure "some _" "none")
+  | some a => test descr true $ f a
+
+/-- A test pipeline to run a function assuming that `opt` is `Option.none` -/
+def withOptionNone (descr : String) (opt : Option α) [ToString α]
+    (f : TestSeq) : TestSeq :=
+  match opt with
+  | none   => test descr true $ f
+  | some a => test descr (ExpectationFailure "none" s!"some {a}")
+
+/-- A test pipeline to run a function assuming that `exc` is `Except.ok _` -/
+def withExceptOk (descr : String) (exc : Except ε α) [ToString ε]
+    (f : α → TestSeq) : TestSeq :=
+  match exc with
+  | .error e => test descr (ExpectationFailure "ok _" s!"error {e}")
+  | .ok    a => test descr true $ f a
+
+/-- A test pipeline to run a function assuming that `exc` is `Except.error _` -/
+def withExceptError (descr : String) (exc : Except ε α) [ToString α]
+    (f : ε → TestSeq) : TestSeq :=
+  match exc with
+  | .error e => test descr true $ f e
+  | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
