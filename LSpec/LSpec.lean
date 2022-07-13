@@ -35,22 +35,22 @@ def test (descr : String) (p : Prop) [TDecidable p]
 abbrev LSpecResult := String × Bool × Option Std.Format
 
 /-- `LSpec` is the monad used to run tests and record their results. -/
-abbrev LSpec := StateT (List LSpecResult) Id Unit
+abbrev LSpec := StateT (List LSpecResult) Id
 
 /-- Runs a sequence of test in the `LSpec` monad -/
-def TestSeq.toLSpec : TestSeq → LSpec
+def TestSeq.toLSpec : TestSeq → LSpec Unit
   | .more d _ (.isTrue _) n    => do set ((d, true, none) :: (← get)); n.toLSpec
   | .more d _ (.isFalse _ m) n => do set ((d, false, m) :: (← get));   n.toLSpec
   | .done                      => pure ()
 
-instance : Coe TestSeq LSpec where
+instance : Coe TestSeq (LSpec Unit) where
   coe := TestSeq.toLSpec
 
 /--
 Runs a set of `LSpec` tests and appends the results to another list of results
 (given as input by the caller).
 -/
-def LSpec.run (tests : LSpec) : List LSpecResult :=
+def LSpec.run (tests : LSpec Unit) : List LSpecResult :=
   (StateT.run tests []).2.reverse
 
 /-- Formats the result of a test for printing. -/
@@ -65,13 +65,13 @@ def formatLSpecResult : LSpecResult → String
 Generates a report for all the results in a `LSpec` test, returning `true` if
 all tests passed and `false` otherwise.
 -/
-def LSpec.runAndCompile (t : LSpec) : Bool × String :=
+def LSpec.runAndCompile (t : LSpec Unit) : Bool × String :=
   let res := t.run
   (res.foldl (init := true) fun acc (_, r, _) => acc && r,
     "\n".intercalate <| res.map formatLSpecResult)
 
 /-- Runs a `LSpec` for generic purposes. -/
-def lspec (t : LSpec) : Except String String :=
+def lspec (t : LSpec Unit) : Except String String :=
   match t.runAndCompile with
   | (true,  msg) => return msg
   | (false, msg) => throw msg
@@ -82,7 +82,7 @@ Runs a `LSpec` with an output meant for the Lean Infoview.
 This function is meant to be called from a custom command. It runs in
 `TermElabM` to have access to `logInfo` and `throwError`.
 -/
-def LSpec.runInTermElabMAsUnit (t : LSpec) : Lean.Elab.TermElabM Unit :=
+def LSpec.runInTermElabMAsUnit (t : LSpec Unit) : Lean.Elab.TermElabM Unit :=
   match lspec t with
   | .ok    msg => Lean.logInfo msg
   | .error msg => throwError msg
@@ -108,7 +108,7 @@ def main := lspecIO $
   test "four equals four" (4 = 4)
 ```
 -/
-def lspecIO (t : LSpec) : IO UInt32 := do
+def lspecIO (t : LSpec Unit) : IO UInt32 := do
   match lspec t with
   | .ok    msg => IO.println  msg; return 0
   | .error msg => IO.eprintln msg; return 1
@@ -121,28 +121,27 @@ instance : TDecidable (ExpectationFailure exp got) :=
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
 def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :
-    TestSeq :=
+    LSpec (Option α) :=
   match opt with
-  | none   => test descr (ExpectationFailure "some _" "none")
-  | some a => test descr true $ f a
+  | none   => do set ((s!"Expected 'some _' but got 'none'", false, none) :: (← get)); pure none
+  | some a => do set ((descr, true, none) :: (← get)); pure (some a)
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.none` -/
-def withOptionNone (descr : String) (opt : Option α) [ToString α]
-    (f : TestSeq) : TestSeq :=
+def withOptionNone (descr : String) (opt : Option α) [ToString α] : LSpec Unit :=
   match opt with
-  | none   => test descr true $ f
-  | some a => test descr (ExpectationFailure "none" s!"some {a}")
+  | none   => do set ((descr, true, none) :: (← get)); pure ()
+  | some a => do set ((s!"Expected 'none' but got 'some {a}'", false, none) :: (← get)); pure ()
 
 /-- A test pipeline to run a function assuming that `exc` is `Except.ok _` -/
 def withExceptOk (descr : String) (exc : Except ε α) [ToString ε]
-    (f : α → TestSeq) : TestSeq :=
+    : LSpec (Option α) :=
   match exc with
-  | .error e => test descr (ExpectationFailure "ok _" s!"error {e}")
-  | .ok    a => test descr true $ f a
+  | .error e => do set ((s!"Expected 'ok _' but got 'error {e}'", false, none) :: (← get)); pure none
+  | .ok    a => do set ((descr, true, none) :: (← get)); pure (some a)
 
 /-- A test pipeline to run a function assuming that `exc` is `Except.error _` -/
 def withExceptError (descr : String) (exc : Except ε α) [ToString α]
-    (f : ε → TestSeq) : TestSeq :=
+    : LSpec (Option ε) :=
   match exc with
-  | .error e => test descr true $ f e
-  | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
+  | .error e => do set ((descr, true, none) :: (← get)); pure (some e)
+  | .ok    a => do set ((s!"Expected 'error _' but got 'ok {a}'", false, none) :: (← get)); pure none
