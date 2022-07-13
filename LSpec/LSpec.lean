@@ -1,4 +1,5 @@
 import Lean
+import LSpec.SlimCheck.Testable
 
 /--
 A variant of `Decidable` for tests. In the failing case, it may contain an
@@ -12,6 +13,18 @@ instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
   match d with
   | isFalse h => .isFalse h f!"Evaluated to false"
   | isTrue  h => .isTrue  h
+
+open SlimCheck in 
+instance (priority := low) (p : Prop) [t : Testable p] : TDecidable p :=
+  let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
+  match res with 
+  | TestResult.success (PSum.inr h) => .isTrue h
+  | TestResult.success _ => .isFalse ""
+  -- if !cfg.quiet then IO.println "Success" else pure ()
+  | TestResult.gaveUp n => _
+  -- if !cfg.quiet then IO.println s!"Gave up {n} times"
+  | TestResult.failure _ xs n => _
+  -- throw (IO.userError $ formatFailure "Found problems!" xs n)
 
 /-- The datatype used to represent a sequence of tests -/
 inductive TestSeq
