@@ -7,7 +7,7 @@ explanatory message.
 -/
 class inductive TDecidable (p : Prop) where
   | isTrue  (h : p)
-  | isMaybe (msg : Option Std.Format := some "SlimCheck success")
+  | isMaybe (msg : Option Std.Format := none)
   | isFalse (h : ¬ p) (msg : Option Std.Format := none)
   | isFailure (msg : Option Std.Format := none)
 
@@ -18,13 +18,11 @@ instance (priority := low) (p : Prop) [d : Decidable p] : TDecidable p :=
   | isTrue  h => .isTrue  h
 
 open SlimCheck Decorations in 
-instance (priority := low) 
-  (p : Prop) [Testable p] : 
-    TDecidable p :=
+instance (priority := low) (p : Prop) [Testable p] : TDecidable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
-  | TestResult.success (PSum.inr h) => .isTrue h
-  | TestResult.success (PSum.inl _) => .isMaybe 
+  | TestResult.success (.inr h) => .isTrue h
+  | TestResult.success (.inl _) => .isMaybe
   | TestResult.gaveUp n => .isFailure s!"Gave up {n} times"
   | TestResult.failure h xs n => 
     .isFalse h $ Testable.formatFailure "Found problems!" xs n
@@ -48,24 +46,32 @@ def test (descr : String) (p : Prop) [TDecidable p]
   .more descr p inferInstance next
 
 open SlimCheck Decorations in 
-def check (descr : String) 
-  (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
-  (next : TestSeq := .done) : 
+def check (descr : String) (p : Prop)
+  (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
+  (next : TestSeq := .done) :
     TestSeq :=
   test descr p' next
 
-abbrev LSpecResult := String × Bool × Option Std.Format
+inductive TestResult
+  | success | failure | success?
+
+def TestResult.failed : TestResult → Bool
+  | failure => true
+  | _       => false
+
+abbrev TestSummary := String × TestResult × Option Std.Format
 
 /-- `LSpec` is the monad used to run tests and record their results. -/
-abbrev LSpec := StateT (List LSpecResult) Id Unit
+abbrev LSpec := StateT (List TestSummary) Id Unit
 
 /-- Runs a sequence of test in the `LSpec` monad -/
-def TestSeq.toLSpec : TestSeq → LSpec
-  | .more d _ (.isTrue _) n    => do set ((d, true, none) :: (← get)); n.toLSpec
-  | .more d _ (.isMaybe m) n    => do set ((d, true, m) :: (← get)); n.toLSpec
-  | .more d _ (.isFalse _ m) n => do set ((d, false, m) :: (← get));   n.toLSpec
-  | .more d _ (.isFailure m) n => do set ((d, false, m) :: (← get));   n.toLSpec
-  | .done                      => pure ()
+def TestSeq.toLSpec (seq : TestSeq) : LSpec := do
+  match seq with
+  | .more d _ (.isTrue _) n => set ((d, .success, none) :: (← get)); n.toLSpec
+  | .more d _ (.isMaybe m) n => set ((d, .success?, m) :: (← get)); n.toLSpec
+  | .more d _ (.isFalse _ m) n => set ((d, .failure, m) :: (← get)); n.toLSpec
+  | .more d _ (.isFailure m) n => set ((d, .failure, m) :: (← get)); n.toLSpec
+  | .done => pure ()
 
 instance : Coe TestSeq LSpec where
   coe := TestSeq.toLSpec
@@ -74,13 +80,16 @@ instance : Coe TestSeq LSpec where
 Runs a set of `LSpec` tests and appends the results to another list of results
 (given as input by the caller).
 -/
-def LSpec.run (tests : LSpec) : List LSpecResult :=
+def LSpec.run (tests : LSpec) : List TestSummary :=
   (StateT.run tests []).2.reverse
 
 /-- Formats the result of a test for printing. -/
-def formatLSpecResult : LSpecResult → String
-  | (d, b, msg) =>
-    let head := if b then s!"✓ {d}" else s!"× {d}"
+def formatTestSummary : TestSummary → String
+  | (d, r, msg) =>
+    let head := match r with
+      | .success  => s!"✓ {d}"
+      | .failure  => s!"× {d}"
+      | .success? => s!"? {d}"
     match msg with
     | some m => head ++ m.indentD.pretty
     | none   => head
@@ -91,8 +100,8 @@ all tests passed and `false` otherwise.
 -/
 def LSpec.runAndCompile (t : LSpec) : Bool × String :=
   let res := t.run
-  (res.foldl (init := true) fun acc (_, r, _) => acc && r,
-    "\n".intercalate <| res.map formatLSpecResult)
+  (res.foldl (init := true) fun acc (_, r, _) => acc && !r.failed,
+    "\n".intercalate <| res.map formatTestSummary)
 
 /-- Runs a `LSpec` for generic purposes. -/
 def lspec (t : LSpec) : Except String String :=
