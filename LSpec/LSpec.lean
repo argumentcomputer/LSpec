@@ -1,26 +1,30 @@
 import Lean
 import LSpec.SlimCheck.Testable
 
+namespace LSpec
+
+abbrev Checkable := SlimCheck.Testable
+
 /--
 A variant of `Decidable` for tests. In the failing case, it may contain an
 explanatory message.
 -/
-class inductive TDecidable (p : Prop) where
+class inductive Testable (p : Prop) where
   | isTrue  (h : p)
   | isMaybe (msg : Option String := some "SlimCheck success")
   | isFalse (h : ¬ p) (msg : Option String := none)
   | isFailure (msg : Option String := none)
 
-/-- A default `TDecidable` instance with low priority. -/
-instance (priority := 25) (p : Prop) [d : Decidable p] : TDecidable p :=
+/-- A default `Testable` instance with low priority. -/
+instance (priority := 25) (p : Prop) [d : Decidable p] : Testable p :=
   match d with
   | isFalse h => .isFalse h "Evaluated to false"
   | isTrue  h => .isTrue  h
 
 open SlimCheck Decorations in 
 instance (priority := 25) 
-  (p : Prop) [Testable p] : 
-    TDecidable p :=
+  (p : Prop) [Checkable p] : 
+    Testable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
   | TestResult.success (.inr h) => .isTrue h
@@ -31,7 +35,7 @@ instance (priority := 25)
 
 /-- The datatype used to represent a sequence of tests -/
 inductive TestSeq
-  | more : String → (prop : Prop) → TDecidable prop → TestSeq → TestSeq
+  | more : String → (prop : Prop) → Testable prop → TestSeq → TestSeq
   | done
 
 /-- Appends two sequences of tests. -/
@@ -43,18 +47,18 @@ instance : Append TestSeq where
   append := TestSeq.append
 
 /-- `test` allows the composition of tests. -/
-def test (descr : String) (p : Prop) [TDecidable p]
+def test (descr : String) (p : Prop) [Testable p]
     (next : TestSeq := .done) : TestSeq :=
   .more descr p inferInstance next
 
 open SlimCheck Decorations in 
 def check (descr : String) (p : Prop)
-  (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
+  (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']
   (next : TestSeq := .done) :
     TestSeq :=
   test descr p' next
 
-/-- Formats the extra error message from `TDecidable` failures. -/
+/-- Formats the extra error message from `Testable` failures. -/
 def formatErrorMsg : Option String → String
   | some msg => s!"\n    {msg}"
   | none     => ""
@@ -94,7 +98,7 @@ Runs a `TestSeq` with an output meant for the Lean Infoview.
 This function is meant to be called from a custom command. It runs in
 `TermElabM` to have access to `logInfo` and `throwError`.
 -/
-def LSpec.runInTermElabMAsUnit (tSeq : TestSeq) : Lean.Elab.TermElabM Unit :=
+def runInTermElabMAsUnit (tSeq : TestSeq) : Lean.Elab.TermElabM Unit :=
   match tSeq.run with
   | (true,  msg) => Lean.logInfo msg
   | (false, msg) => throwError msg
@@ -142,7 +146,7 @@ inductive ExpectationFailure (exp got : String) : Prop
 def formatExpectedButGotMsg [Repr α] (exp got : α) : String :=
   s!"Expected '{repr exp}' but got '{repr got}'"
 
-instance : TDecidable (ExpectationFailure exp got) :=
+instance : Testable (ExpectationFailure exp got) :=
   .isFailure $ formatExpectedButGotMsg exp got
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
@@ -172,3 +176,5 @@ def withExceptError (descr : String) (exc : Except ε α) [ToString α]
   match exc with
   | .error e => test descr true $ f e
   | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
+
+end LSpec
