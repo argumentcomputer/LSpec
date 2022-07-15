@@ -97,6 +97,19 @@ def lspec (t : TestSeq) : IO UInt32 := do
   if ← t.runIO then return 0
   return 1
 
+/--
+Runs a sequence of tests that are created from a `List α` and a function
+`α → IO TestSeq`. Instead of creating all tests and running them consecutively,
+this function alternates between test creation and test execution.
+
+It's rather useful for when the test creation process involves heavy
+computations in `IO` (e.g. when `f` reads data from files and processes it).
+-/
+def lspecEachWith (l : List α) (f : α → IO TestSeq) : IO UInt32 := do
+  let success ← l.foldlM (init := true) fun acc a => do
+    pure $ acc && (← ( ← f a).runIO)
+  return if success then 0 else 1
+
 inductive ExpectationFailure (exp got : String) : Prop
 
 def formatExpectedButGotMsg [Repr α] (exp got : α) : String :=
