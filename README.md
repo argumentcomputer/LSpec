@@ -54,39 +54,13 @@ Examples:
   test "five equals five" (5 = 5)
 -- ✓ four equals four
 -- ✓ five equals five
-
-#lspec do
-  test "four equals four" (4 = 4)
-  test "five equals five" (5 = 5)
--- ✓ four equals four
--- ✓ five equals five
 ```
 
 An important note is that a failing test will raise an error, interrupting the building process.
 
-The fact that test execution happens in the `LSpec` monad allows the use of `do` notation, as seen above.
-So one can (ab)use the `do` notation run multiple tests without dollar signs.
-In such case, every call to `test` creates a `TestSeq` with a single test.
-
 #### The `lspec` function
 
-The `lspec` function can be used for generic purposes inside other functions.
-It returns a term of type `Except String String`, representing success or failure, with a message for each case.
-
-```lean
-def tests :=
-  test "four equals four" (4 = 4) $
-  test "five equals five" (5 = 5)
-
-def foo : IO Unit := do
-  match lspec tests with
-  | .ok    msg => IO.println msg
-  | .error msg => IO.eprintln msg
-```
-
-#### The `lspecIO` function
-
-`lspecIO` is meant to be used in files to be compiled and integrated in a testing infrastructure, as shown soon.
+`lspec` is meant to be used in files to be compiled and integrated in a testing infrastructure, as shown soon.
 
 ```lean
 def fourIO : IO Nat :=

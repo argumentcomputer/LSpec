@@ -1,25 +1,28 @@
 import LSpec.LSpec
 
-def formatBinaryError (m : String) (x y : α) [Repr α] : Std.Format :=
-  s!"{m}{(repr x).indentD}\nand{(repr y).indentD}"
-
-instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
+instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
   if h : x = y then
     .isTrue h
   else
-    .isFalse h $ formatBinaryError "Expected to be equal:" x y
+    .isFalse h $ formatExpectedButGotMsg x y
 
-instance (x y : α) [BEq α] [Repr α] : TDecidable (x == y) :=
+instance (priority := 50) (x y : α) [BEq α] [Repr α] : TDecidable (x == y) :=
   if h : x == y then
     .isTrue h
   else
-    .isFalse h $ formatBinaryError "Expected to be equal:" x y
+    .isFalse h $ formatExpectedButGotMsg x y
 
-instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x ≠ y) :=
+instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : TDecidable (x ≠ y) :=
   if h : x ≠ y then
     .isTrue h
   else
-    .isFalse h s!"Both equal to:{(repr x).indentD}"
+    .isFalse h s!"Expected to be different but both equal to '{repr x}'"
+
+instance (priority := 50) (x y : α) [BEq α] [Repr α] : TDecidable (x != y) :=
+  if h : x != y then
+    .isTrue h
+  else
+    .isFalse h s!"Expected to be different but both equal to '{repr x}'"
 
 /--
 A fancier example of `TDecidable` instance that allows us to write:
