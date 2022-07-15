@@ -23,8 +23,8 @@ instance (priority := 25)
     TDecidable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
-  | TestResult.success (PSum.inr h) => .isTrue h
-  | TestResult.success (PSum.inl _) => .isMaybe 
+  | TestResult.success (.inr h) => .isTrue h
+  | TestResult.success (.inl _) => .isMaybe
   | TestResult.gaveUp n => .isFailure s!"Gave up {n} times"
   | TestResult.failure h xs n => 
     .isFalse h $ Testable.formatFailure "Found problems!" xs n
@@ -48,9 +48,9 @@ def test (descr : String) (p : Prop) [TDecidable p]
   .more descr p inferInstance next
 
 open SlimCheck Decorations in 
-def check (descr : String) 
-  (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
-  (next : TestSeq := .done) : 
+def check (descr : String) (p : Prop)
+  (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
+  (next : TestSeq := .done) :
     TestSeq :=
   test descr p' next
 
