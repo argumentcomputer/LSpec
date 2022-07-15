@@ -49,11 +49,7 @@ def test2 := test "true" true
 --   and
 --     0
 
-#lspec do
-  check "add_comm" $ ∀ n m : Nat, n + m = m + n
-  test "obviously four equals four" $ 4 = 4
--- ? add_comm
--- ✓ obviously four equals four
+#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + n
 
 def fourIO : IO Nat :=
   return 4
