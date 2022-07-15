@@ -18,7 +18,7 @@ instance (priority := 25) (p : Prop) [d : Decidable p] : TDecidable p :=
   | isTrue  h => .isTrue  h
 
 open SlimCheck Decorations in 
-instance (priority := low) 
+instance (priority := 25) 
   (p : Prop) [Testable p] : 
     TDecidable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
@@ -46,6 +46,13 @@ instance : Append TestSeq where
 def test (descr : String) (p : Prop) [TDecidable p]
     (next : TestSeq := .done) : TestSeq :=
   .more descr p inferInstance next
+
+open SlimCheck Decorations in 
+def check (descr : String) 
+  (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p']
+  (next : TestSeq := .done) : 
+    TestSeq :=
+  test descr p' next
 
 /-- Formats the extra error message from `TDecidable` failures. -/
 def formatErrorMsg : Option String → String
