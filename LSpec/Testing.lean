@@ -1,14 +1,7 @@
 import LSpec
 
-#lspec do
-  test "Nat equality" (4 = 4)
-  test "Nat inequality" (4 ≠ 5)
-  test "bool equality" (42 == 42)
-  test "list length" ([42].length = 1)
-  test "list nonempty" ¬ [42].isEmpty
-
 #lspec
-  test "Nat equality" (4 = 4) $
+  test "Nat equality" (4 = 5) $
   test "Nat inequality" (4 ≠ 5) $
   test "bool equality" (42 == 42) $
   test "list length" ([42].length = 1) $
@@ -17,11 +10,11 @@ import LSpec
 /--
 Testing using `#lspec` with something of type `LSpec`.
 -/
-def test1 : LSpec := do
-  test "Nat equality" (4 = 4)
-  test "Nat inequality" (4 ≠ 5)
-  test "bool equality" (42 == 42)
-  test "list length" ([42].length = 1)
+def test1 : TestSeq :=
+  test "Nat equality" (4 = 4) $
+  test "Nat inequality" (4 ≠ 5) $
+  test "bool equality" (42 == 42) $
+  test "list length" ([42].length = 1) $
   test "list nonempty" ¬ [42].isEmpty
 
 #lspec test1
@@ -37,9 +30,9 @@ def test2 := test "true" true
 
 #lspec test "true" <| true
 
-#lspec do
-  test "a" <| 4 = 4
-  test "b" <| 4 ≠ 5
+#lspec
+  test "a" (4 = 4) $
+  test "b" (4 ≠ 5)
 
 #lspec
   test "array eq" <| #[1,2,3] = (List.range 3).toArray
@@ -65,8 +58,8 @@ def fiveIO : IO Nat :=
 def main : IO UInt32 := do
   let four ← fourIO
   let five ← fiveIO
-  lspecIO do
-    test "fourIO equals 4" (four = 4)
+  lspec $
+    test "fourIO equals 4" (four = 4) $
     test "fiveIO equals 5" (five = 5)
 
 #eval main
