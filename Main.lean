@@ -14,15 +14,16 @@ partial def getFilePaths (fp : FilePath) (acc : List FilePath := []) :
     else
       return acc
 
-def runCmd (descr cmd : String) (args : Array String := #[]) : IO Bool := do
+def runCmd (descr cmd : String) (args : Array String := #[])
+    (building : Bool) : IO Bool := do
   IO.println descr
-  let out ← IO.Process.output { cmd := cmd, args := args }
-  if out.exitCode == 0 then
-    IO.println out.stdout
-    return false
+  if building then
+    let out ← IO.Process.output { cmd := cmd, args := args }
+    if out.exitCode == 0 then return false
+    else IO.eprintln out.stderr; return true
   else
-    IO.eprintln out.stderr
-    return true
+    let out ← IO.Process.spawn { cmd := cmd, args := args }
+    return (← out.wait) != 0
 
 def main : IO UInt32 := do
   let mut exeFiles : List String := []
@@ -30,15 +31,16 @@ def main : IO UInt32 := do
       fun fp => (fp.toString.splitOn ".").head! do
     let exe := testCase.replace "/" "-"
     let pkg := testCase.replace "/" "."
-    if ← runCmd s!"Building {exe}" "lake" #["build", pkg] then
-      return (1 : UInt32)
+    if ← runCmd s!"Building {exe}" "lake" #["build", pkg] true then
+      IO.eprintln s!"Failed to build {exe}."
+      return 1
     exeFiles := exe :: exeFiles
   let mut hasFailure : Bool := false
   for exe in exeFiles.reverse do
     hasFailure := hasFailure ||
-      (← runCmd s!"Running {exe}" s!"./build/bin/{exe}")
+      (← runCmd s!"\nRunning {exe}" s!"./build/bin/{exe}" #[] false)
   if !hasFailure then
-    IO.println "All tests passed!"
+    IO.println "\nAll tests passed!"
     return 0
-  IO.println "Some test failed!"
+  IO.eprintln "\nSome test failed!"
   return 1
