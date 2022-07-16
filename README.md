@@ -17,16 +17,16 @@ In order to instantiate terms of `TestSeq`, use the `test` helper function:
 ```
 
 `test` consumes a description a proposition and a next test
-The proposition, however, must have its own instance of `TDecidable`.
+The proposition, however, must have its own instance of `Testable`.
 
-### The `TDecidable` class
+### The `Testable` class
 
-`TDecidable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
+`Testable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
 
 This is an example of a simple instance for decidability of equalities:
 
 ```lean
-instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
+instance (x y : α) [DecidableEq α] [Repr α] : Testable (x = y) :=
   if h : x = y then
     .isTrue h
   else
@@ -35,7 +35,7 @@ instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
 
 The custom failure message is optional.
 
-There are more examples of `TDecidable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
+There are more examples of `Testable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
 Such instances are automatically imported via `import LSpec`.
 
 The user is, of course, free to provide their own instances.

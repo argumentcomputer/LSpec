@@ -1,12 +1,78 @@
 import Lean
 import LSpec.SlimCheck.Testable
 
+/-!
+
+# The core `LSpec` framework
+
+
+
+## Creating Customized Instances
+
+The type classes `Testable`, `SampleableExt` and `Shrinkable` are the
+means by which `SlimCheck` creates samples and tests them. For instance,
+the proposition `∀ i j : ℕ, i ≤ j` has a `Testable` instance because `ℕ`
+is sampleable and `i ≤ j` is decidable. Once `SlimCheck` finds the `Testable`
+instance, it can start using the instance to repeatedly creating samples
+and checking whether they satisfy the property. Once it has found a
+counter-example it will then use a `Shrinkable` instance to reduce the
+example. This allows the user to create new instances and apply
+`SlimCheck` to new situations.
+
+### What do I do if I'm testing a property about my newly defined type?
+
+Let us consider a type made for a new formalization:
+```lean
+structure MyType where
+  x : ℕ
+  y : ℕ
+  h : x ≤ y
+  deriving Repr
+```
+How do we test a property about `MyType`? For instance, let us consider
+`Testable.check $ ∀ a b : MyType, a.y ≤ b.x → a.x ≤ b.y`. Writing this
+property as is will give us an error because we do not have an instance
+of `Shrinkable MyType` and `SampleableExt MyType`. We can define one as follows:
+```lean
+instance : Shrinkable MyType where
+  shrink := λ ⟨x,y,h⟩ =>
+    let proxy := Shrinkable.shrink (x, y - x)
+    proxy.map (λ ⟨⟨fst, snd⟩, ha⟩ => ⟨⟨fst, fst + snd, sorry⟩, sorry⟩)
+instance : SampleableExt MyType :=
+  SampleableExt.mkSelfContained do
+    let x ← SampleableExt.interpSample Nat
+    let xyDiff ← SampleableExt.interpSample Nat
+    pure $ ⟨x, x + xyDiff, sorry⟩
+```
+Again, we take advantage of the fact that other types have useful
+`Shrinkable` implementations, in this case `Prod`. Note that the second
+proof is heavily based on `WellFoundedRelation` since its used for termination so
+the first step you want to take is almost always to `simp_wf` in order to
+get through the `WellFoundedRelation`.
+
+## Main definitions
+
+  * `Testable` class
+  * `Testable.check`: a way to test a proposition using random examples
+
+## Tags
+
+random testing
+
+## References
+
+  * https://hackage.haskell.org/package/hspec
+
+-/
+
 namespace LSpec
 
 abbrev Checkable := SlimCheck.Testable
 
 /--
-A variant of `Decidable` for tests. In the failing case, it may contain an
+A variant of `Decidable` for tests. 
+
+In the failing case, it may contain an
 explanatory message.
 -/
 class inductive Testable (p : Prop) where
@@ -22,9 +88,7 @@ instance (priority := 25) (p : Prop) [d : Decidable p] : Testable p :=
   | isTrue  h => .isTrue  h
 
 open SlimCheck Decorations in 
-instance (priority := 25) 
-  (p : Prop) [Checkable p] : 
-    Testable p :=
+instance (priority := 25) (p : Prop) [Checkable p] : Testable p :=
   let (res, _) := ReaderT.run (Testable.runSuite p) (.up mkStdGen)
   match res with 
   | TestResult.success (.inr h) => .isTrue h
