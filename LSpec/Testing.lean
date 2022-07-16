@@ -1,5 +1,7 @@
 import LSpec
 
+open LSpec 
+
 #lspec
   test "Nat equality" (4 = 5) $
   test "Nat inequality" (4 ≠ 5) $
