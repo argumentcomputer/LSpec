@@ -495,7 +495,7 @@ proposition where the quantifiers are annotated with `NamedBinder`.
 scoped elab "mk_decorations" : tactic => do
   let goal ← getMainGoal
   let goalType ← getMVarType goal
-  if let Expr.app (.const ``Decorations.DecorationsOf ..) body _ := goalType then
+  if let Expr.app (.const ``Decorations.DecorationsOf ..) body := goalType then
     closeMainGoal (addDecorations body)
 
 end Decorations

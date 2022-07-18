@@ -1,3 +1,3 @@
 import LSpec.LSpec
 import LSpec.Instances
-import LSpec.SlimCheck.Testable
+import LSpec.SlimCheck.Checkable

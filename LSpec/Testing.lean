@@ -21,7 +21,7 @@ def test1 : TestSeq :=
 
 #lspec test1
 
-#eval lspec test1
+#eval lspecIO test1
 
 /--
 Testing using `#lspec` with something of type `LSpecTest`.
@@ -38,20 +38,19 @@ def test2 := test "true" true
 
 #lspec
   test "array eq" <| #[1,2,3] = (List.range 3).toArray
+-- × array eq
+--     Expected '#[1, 2, 3]' but got '#[0, 1, 2]'
 
 #lspec test "all lt" $ ∀ n, n < 10 → n - 5 < 5
 -- ✓ all lt
 
--- All tests succeeded
-
 #lspec test "all lt" $ ∀ n, n < 15 → n - 10 = 0
 -- × all lt
---   Fails on input 11. Expected to be equal:
---     1
---   and
---     0
+--     Fails on input 11. Expected '1' but got '0'
 
 #lspec check "add_comm" $ ∀ n m : Nat, n + m = m + n
+
+#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + m
 
 def fourIO : IO Nat :=
   return 4
@@ -59,10 +58,10 @@ def fourIO : IO Nat :=
 def fiveIO : IO Nat :=
   return 5
 
-def main : IO UInt32 := do
+def main := do
   let four ← fourIO
   let five ← fiveIO
-  lspec $
+  lspecIO $
     test "fourIO equals 4" (four = 4) $
     test "fiveIO equals 5" (five = 5)
 

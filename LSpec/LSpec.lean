@@ -42,10 +42,10 @@ open SlimCheck Decorations in
 instance (priority := 25) (p : Prop) [Checkable p] : Testable p :=
   let (res, _) := ReaderT.run (Checkable.runSuite p) (.up mkStdGen)
   match res with 
-  | TestResult.success (.inr h) => .isTrue h
-  | TestResult.success (.inl _) => .isMaybe
-  | TestResult.gaveUp n => .isFailure s!"Gave up {n} times"
-  | TestResult.failure h xs n => 
+  | .success (.inr h) => .isTrue h
+  | .success (.inl _) => .isMaybe
+  | .gaveUp n => .isFailure s!"Gave up {n} times"
+  | .failure h xs n =>
     .isFalse h $ Checkable.formatFailure "Found problems!" xs n
 
 /-- Formats the extra error message from `Testable` failures. -/
@@ -64,8 +64,6 @@ inductive TestSeq
 def TestSeq.append : TestSeq → TestSeq → TestSeq
   | done, t => t
   | more d p i n, t' => more d p i $ n.append t'
-
--- def TestSeq.
 
 instance : Append TestSeq where
   append := TestSeq.append
@@ -134,7 +132,7 @@ def TestSeq.run (tSeq : TestSeq) : Bool × String :=
       (true && b, m)
     | .more d _ (.isMaybe   msg) n => 
       let (b, m) := aux s!"{acc}? {d}{formatErrorMsg msg}\n" n
-      (false && b, m)
+      (true && b, m)
     | .more d _ (.isFalse _ msg) n
     | .more d _ (.isFailure msg) n =>
       let (b, m) := aux s!"{acc}× {d}{formatErrorMsg msg}\n" n
@@ -172,7 +170,7 @@ export MonadEmit (emit)
 
 /-- A monadic runner that emits test outputs as they're produced. -/
 def TestSeq.runM [Monad m] [MonadEmit m] : TestSeq → m Bool
-  | .done => pure true
+  | .done => return true
   | .more d _ (.isTrue _) n => do emit s!"✓ {d}"; return true && (← n.runM)
   | .more d _ (.isMaybe msg) n => do
     emit s!"? {d}{formatErrorMsg msg}"; return true && (← n.runM)
