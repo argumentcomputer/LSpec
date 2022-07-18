@@ -111,6 +111,8 @@ def TestSeq.append : TestSeq → TestSeq → TestSeq
   | done, t => t
   | more d p i n, t' => more d p i $ n.append t'
 
+-- def TestSeq.
+
 instance : Append TestSeq where
   append := TestSeq.append
 
@@ -235,6 +237,21 @@ def succeed [Monad m] [inst : MonadTest m α] : m α :=
 def fail [Monad m] [inst : MonadTest m α] : m α :=
   return inst.failure
 
+/-- Runs a `TestSeq` in a monad with `MonadEmit` and `MonadTest`. -/
+def lspecM [Monad m] [MonadEmit m] [MonadTest m α] (t : TestSeq) : m α := do
+  if ← t.runM then succeed
+  else fail
+
+/--
+Interspersedly creates a `TestSeq` from each element `β` of a list with a
+function `β → m TestSeq` and runs the test sequence.
+-/
+def lspecEachM [Monad m] [MonadEmit m] [MonadTest m α]
+    (l : List β) (f : β → m TestSeq) : m α := do
+  let success ← l.foldlM (init := true) fun acc a => do
+    pure $ acc && (← ( ← f a).runM)
+  if success then succeed else fail
+
 section IOTesting
 
 instance : MonadEmit IO :=
@@ -254,9 +271,8 @@ def main := lspecIO $
   test "four equals four" (4 = 4)
 ```
 -/
-def lspec (t : TestSeq) : IO UInt32 := do
-  if ← t.runM then succeed
-  else fail
+def lspecIO (t : TestSeq) : IO UInt32 :=
+  lspecM t
 
 /--
 Runs a sequence of tests that are created from a `List α` and a function
@@ -266,10 +282,8 @@ this function alternates between test creation and test execution.
 It's rather useful for when the test creation process involves heavy
 computations in `IO` (e.g. when `f` reads data from files and processes it).
 -/
-def lspecEachWith (l : List α) (f : α → IO TestSeq) : IO UInt32 := do
-  let success ← l.foldlM (init := true) fun acc a => do
-    pure $ acc && (← ( ← f a).runM)
-  if success then succeed else fail
+def lspecEachIO (l : List α) (f : α → IO TestSeq) : IO UInt32 :=
+  lspecEachM l f
 
 end IOTesting
 

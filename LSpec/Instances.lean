@@ -59,4 +59,4 @@ instance Nat.Testable_forall_lt
     | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_step hn)) msg
     | .isFailure msg => .isFailure msg
 
-end LSpec 
+end LSpec
