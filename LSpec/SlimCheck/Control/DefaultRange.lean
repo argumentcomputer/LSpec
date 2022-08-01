@@ -28,6 +28,8 @@ Lean developers, please forgive us.
   * Haskell
 -/
 
+namespace SlimCheck
+
 class Bounded (α : Type u) where 
   lo : α
   hi : α
@@ -55,3 +57,5 @@ instance {n : Nat} : Bounded (Fin n.succ) where
 instance : DefaultRange Int where 
   lo :=  - Int.ofNat (USize.size / 2)
   hi := Int.ofNat (USize.size / 2 - 1)
+
+end SlimCheck

@@ -268,7 +268,7 @@ instance forallTypesCheckable {f : Type → Prop} [Checkable (f Int)] : Checkabl
 Format the counter-examples found in a test failure.
 -/
 def formatFailure (s : String) (xs : List String) (n : Nat) : String :=
-  let counter := String.intercalate "\n" xs
+  let counter := "\n".intercalate xs
   let parts := [
     "\n===================",
     s,
@@ -276,7 +276,7 @@ def formatFailure (s : String) (xs : List String) (n : Nat) : String :=
     s!"({n} shrinks)",
     "-------------------"
   ]
-  String.intercalate "\n" parts
+  "\n".intercalate parts
 
 /--
 Increase the number of shrinking steps in a test result.
@@ -307,8 +307,8 @@ partial def minimizeAux [SampleableExt α] {β : α → Prop} [∀ x, Checkable 
       if cfg.traceShrink then
         slimTrace s!"{var} shrunk to {repr candidate} from {repr x}"
       let currentStep := OptionT.lift $ pure $ Sigma.mk candidate (addShrinks (n + 1) res)
-      let nextStep := @minimizeAux α _ β _ cfg var candidate (n + 1)
       -- todo: `nextStep` is unused. Why is it here?
+      -- let nextStep := @minimizeAux α _ β _ cfg var candidate (n + 1)
       return ← (currentStep)
   if cfg.traceShrink then
     slimTrace s!"No shrinking possible for {var} := {repr x}"
@@ -493,8 +493,7 @@ def foo (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Chec
 proposition where the quantifiers are annotated with `NamedBinder`.
 -/
 scoped elab "mk_decorations" : tactic => do
-  let goal ← getMainGoal
-  let goalType ← getMVarType goal
+  let goalType ← (← getMainGoal).getType
   if let Expr.app (.const ``Decorations.DecorationsOf ..) body := goalType then
     closeMainGoal (addDecorations body)
 

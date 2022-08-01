@@ -6,13 +6,13 @@ instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : Testable (x = 
   if h : x = y then
     .isTrue h
   else
-    .isFalse h $ formatExpectedButGotMsg x y
+    .isFalse h $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
 
 instance (priority := 50) (x y : α) [BEq α] [Repr α] : Testable (x == y) :=
   if h : x == y then
     .isTrue h
   else
-    .isFalse h $ formatExpectedButGotMsg x y
+    .isFalse h $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
 
 instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : Testable (x ≠ y) :=
   if h : x ≠ y then

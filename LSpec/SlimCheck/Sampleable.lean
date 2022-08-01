@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Henrik Böving, Simon Hudon
 -/
 import LSpec.SlimCheck.Gen
+
 /-!
 # `SampleableExt` Class
 This class permits the creation samples of a given type
@@ -63,7 +64,7 @@ random testing
 
 namespace SlimCheck
 
-open Random Gen
+open Random
 
 /-- Given an example `x : α`, `Shrinkable α` gives us a way to shrink it
 and suggest simpler examples. -/
@@ -155,7 +156,7 @@ end Shrinkers
 
 section Samplers
 
-open SampleableExt
+open Gen SampleableExt
 
 instance Nat.sampleableExt : SampleableExt Nat :=
   mkSelfContained (do choose Nat 0 (← getSize))

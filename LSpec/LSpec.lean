@@ -85,11 +85,8 @@ def check (descr : String) (p : Prop)
 
 inductive ExpectationFailure (exp got : String) : Prop
 
-def formatExpectedButGotMsg [Repr α] (exp got : α) : String :=
-  s!"Expected '{repr exp}' but got '{repr got}'"
-
 instance : Testable (ExpectationFailure exp got) :=
-  .isFailure $ formatExpectedButGotMsg exp got
+  .isFailure s!"Expected '{repr exp}' but got '{repr got}'"
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
 def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :

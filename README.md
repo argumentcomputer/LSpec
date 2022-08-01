@@ -36,7 +36,6 @@ instance (x y : α) [DecidableEq α] [Repr α] : Testable (x = y) :=
 The custom failure message is optional.
 
 There are more examples of `Testable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
-Such instances are automatically imported via `import LSpec`.
 
 The user is, of course, free to provide their own instances.
 
@@ -69,13 +68,17 @@ def fourIO : IO Nat :=
 def fiveIO : IO Nat :=
   return 5
 
-def main : IO UInt32 := do
+def main := do
   let four ← fourIO
   let five ← fiveIO
-  lspec do
-    test "fourIO equals 4" (four = 4)
+  lspecIO $
+    test "fourIO equals 4" (four = 4) $
     test "fiveIO equals 5" (five = 5)
 ```
+
+## Integration with `SlimCheck`
+
+TODO
 
 ## Setting up a testing infra
 
