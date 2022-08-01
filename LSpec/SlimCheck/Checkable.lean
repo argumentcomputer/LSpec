@@ -8,15 +8,15 @@ import LSpec.SlimCheck.Sampleable
 import Lean
 
 /-!
-# `Testable` Class
-Testable propositions have a procedure that can generate counter-examples
+# `Checkable` Class
+Checkable propositions have a procedure that can generate counter-examples
 together with a proof that they invalidate the proposition.
 This is a port of the Haskell QuickCheck library.
 ## Creating Customized Instances
-The type classes `Testable`, `SampleableExt` and `Shrinkable` are the
+The type classes `Checkable`, `SampleableExt` and `Shrinkable` are the
 means by which `SlimCheck` creates samples and tests them. For instance,
-the proposition `∀ i j : ℕ, i ≤ j` has a `Testable` instance because `ℕ`
-is sampleable and `i ≤ j` is decidable. Once `SlimCheck` finds the `Testable`
+the proposition `∀ i j : ℕ, i ≤ j` has a `Checkable` instance because `ℕ`
+is sampleable and `i ≤ j` is decidable. Once `SlimCheck` finds the `Checkable`
 instance, it can start using the instance to repeatedly creating samples
 and checking whether they satisfy the property. Once it has found a
 counter-example it will then use a `Shrinkable` instance to reduce the
@@ -32,7 +32,7 @@ structure MyType where
   deriving Repr
 ```
 How do we test a property about `MyType`? For instance, let us consider
-`Testable.check $ ∀ a b : MyType, a.y ≤ b.x → a.x ≤ b.y`. Writing this
+`Checkable.check $ ∀ a b : MyType, a.y ≤ b.x → a.x ≤ b.y`. Writing this
 property as is will give us an error because we do not have an instance
 of `Shrinkable MyType` and `SampleableExt MyType`. We can define one as follows:
 ```lean
@@ -52,8 +52,8 @@ proof is heavily based on `WellFoundedRelation` since its used for termination s
 the first step you want to take is almost always to `simp_wf` in order to
 get through the `WellFoundedRelation`.
 ## Main definitions
-  * `Testable` class
-  * `Testable.check`: a way to test a proposition using random examples
+  * `Checkable` class
+  * `Checkable.check`: a way to test a proposition using random examples
 ## Tags
 random testing
 ## References
@@ -113,8 +113,8 @@ export PrintableProp (printProp)
 instance (priority := low) : PrintableProp p where
   printProp := "⋯"
 
-/-- `Testable p` uses random examples to try to disprove `p`. -/
-class Testable (p : Prop) where
+/-- `Checkable p` uses random examples to try to disprove `p`. -/
+class Checkable (p : Prop) where
   run (cfg : Configuration) (minimize : Bool) : Gen (TestResult p)
 
 def NamedBinder (_n : String) (p : Prop) : Prop := p
@@ -202,22 +202,22 @@ def verbose : Configuration where
 
 end Configuration
 
-namespace Testable
+namespace Checkable
 
 open TestResult
 
-def runProp (p : Prop) [Testable p] : Configuration → Bool → Gen (TestResult p) := Testable.run
+def runProp (p : Prop) [Checkable p] : Configuration → Bool → Gen (TestResult p) := Checkable.run
 
 /-- A `dbgTrace` with special formatting -/
 def slimTrace [Pure m] (s : String) : m PUnit := dbgTrace s!"[SlimCheck: {s}]" (λ _ => pure ())
 
-instance andTestable [Testable p] [Testable q] : Testable (p ∧ q) where
+instance andCheckable [Checkable p] [Checkable q] : Checkable (p ∧ q) where
   run := λ cfg min => do
     let xp ← runProp p cfg min
     let xq ← runProp q cfg min
     pure $ and xp xq
 
-instance orTestable [Testable p] [Testable q] : Testable (p ∨ q) where
+instance orCheckable [Checkable p] [Checkable q] : Checkable (p ∨ q) where
   run := λ cfg min => do
     let xp ← runProp p cfg min
     -- As a little performance optimization we can just not run the second
@@ -241,12 +241,12 @@ by constructor
      | Or.inl h => exact Iff.intro (λ _ => h.2) (λ _ => h.1)
      | Or.inr h => exact Iff.intro (λ a => False.elim $ h.1 a) (λ b => False.elim $ h.2 b)
 
-instance iffTestable [Testable ((p ∧ q) ∨ (¬ p ∧ ¬ q))] : Testable (p ↔ q) where
+instance iffCheckable [Checkable ((p ∧ q) ∨ (¬ p ∧ ¬ q))] : Checkable (p ↔ q) where
   run := λ cfg min => do
     let h ← runProp ((p ∧ q) ∨ (¬ p ∧ ¬ q)) cfg min
-    pure $ iff Testable.key h
+    pure $ iff Checkable.key h
 
-instance decGuardTestable [PrintableProp p] [Decidable p] {β : p → Prop} [∀ h, Testable (β h)] : Testable (NamedBinder var $ ∀ h, β h) where
+instance decGuardCheckable [PrintableProp p] [Decidable p] {β : p → Prop} [∀ h, Checkable (β h)] : Checkable (NamedBinder var $ ∀ h, β h) where
   run := λ cfg min => do
     if h : p then
       let res := (runProp (β h) cfg min)
@@ -259,7 +259,7 @@ instance decGuardTestable [PrintableProp p] [Decidable p] {β : p → Prop} [∀
     else
       pure $ gaveUp 1
 
-instance forallTypesTestable {f : Type → Prop} [Testable (f Int)] : Testable (NamedBinder var $ ∀ x, f x) where
+instance forallTypesCheckable {f : Type → Prop} [Checkable (f Int)] : Checkable (NamedBinder var $ ∀ x, f x) where
   run := λ cfg min => do
     let r ← runProp (f Int) cfg min
     pure $ addVarInfo var "ℤ" (· $ Int) r
@@ -268,7 +268,7 @@ instance forallTypesTestable {f : Type → Prop} [Testable (f Int)] : Testable (
 Format the counter-examples found in a test failure.
 -/
 def formatFailure (s : String) (xs : List String) (n : Nat) : String :=
-  let counter := String.intercalate "\n" xs
+  let counter := "\n".intercalate xs
   let parts := [
     "\n===================",
     s,
@@ -276,7 +276,7 @@ def formatFailure (s : String) (xs : List String) (n : Nat) : String :=
     s!"({n} shrinks)",
     "-------------------"
   ]
-  String.intercalate "\n" parts
+  "\n".intercalate parts
 
 /--
 Increase the number of shrinking steps in a test result.
@@ -294,7 +294,7 @@ candidate that falsifies a property and recursively shrinking that one.
 The process is guaranteed to terminate because `shrink x` produces
 a proof that all the values it produces are smaller (according to `SizeOf`)
 than `x`. -/
-partial def minimizeAux [SampleableExt α] {β : α → Prop} [∀ x, Testable (β x)] (cfg : Configuration) (var : String)
+partial def minimizeAux [SampleableExt α] {β : α → Prop} [∀ x, Checkable (β x)] (cfg : Configuration) (var : String)
     (x : SampleableExt.proxy α) (n : Nat) : OptionT Gen (Σ x, TestResult (β (SampleableExt.interp x))) := do
   let candidates := SampleableExt.shrink.shrink x
   if cfg.traceShrinkCandidates then
@@ -302,12 +302,13 @@ partial def minimizeAux [SampleableExt α] {β : α → Prop} [∀ x, Testable (
   for candidate in candidates do
     if cfg.traceShrinkCandidates then
       slimTrace s!"Trying {var} := {repr candidate}"
-    let res ← OptionT.lift $ Testable.runProp (β (SampleableExt.interp candidate)) cfg true
+    let res ← OptionT.lift $ Checkable.runProp (β (SampleableExt.interp candidate)) cfg true
     if res.isFailure then
       if cfg.traceShrink then
         slimTrace s!"{var} shrunk to {repr candidate} from {repr x}"
       let currentStep := OptionT.lift $ pure $ Sigma.mk candidate (addShrinks (n + 1) res)
-      let nextStep := @minimizeAux α _ β _ cfg var candidate (n + 1)
+      -- todo: `nextStep` is unused. Why is it here?
+      -- let nextStep := @minimizeAux α _ β _ cfg var candidate (n + 1)
       return ← (currentStep)
   if cfg.traceShrink then
     slimTrace s!"No shrinking possible for {var} := {repr x}"
@@ -315,7 +316,7 @@ partial def minimizeAux [SampleableExt α] {β : α → Prop} [∀ x, Testable (
 
 /-- Once a property fails to hold on an example, look for smaller counter-examples
 to show the user. -/
-def minimize [SampleableExt α] {β : α → Prop} [∀ x, Testable (β x)] (cfg : Configuration) (var : String)
+def minimize [SampleableExt α] {β : α → Prop} [∀ x, Checkable (β x)] (cfg : Configuration) (var : String)
     (x : SampleableExt.proxy α) (r : TestResult (β $ SampleableExt.interp x)) : Gen (Σ x, TestResult (β $ SampleableExt.interp x)) := do
   if cfg.traceShrink then
      slimTrace "Shrink"
@@ -325,12 +326,12 @@ def minimize [SampleableExt α] {β : α → Prop} [∀ x, Testable (β x)] (cfg
 
 /-- Test a universal property by creating a sample of the right type and instantiating the
 bound variable with it. -/
-instance varTestable [SampleableExt α] {β : α → Prop} [∀ x, Testable (β x)] : Testable (NamedBinder var $ ∀ x : α, β x) where
+instance varCheckable [SampleableExt α] {β : α → Prop} [∀ x, Checkable (β x)] : Checkable (NamedBinder var $ ∀ x : α, β x) where
   run := λ cfg min => do
     let x ← SampleableExt.sample
     if cfg.traceSuccesses || cfg.traceDiscarded then
       slimTrace s!"{var} := {repr x}"
-    let r ← Testable.runProp (β $ SampleableExt.interp x) cfg false
+    let r ← Checkable.runProp (β $ SampleableExt.interp x) cfg false
     let ⟨finalX, finalR⟩ ← 
       if isFailure r then
         if cfg.traceSuccesses then
@@ -344,23 +345,23 @@ instance varTestable [SampleableExt α] {β : α → Prop} [∀ x, Testable (β 
     pure $ addVarInfo var finalX (· $ SampleableExt.interp finalX) finalR
 
 /-- Test a universal property about propositions -/
-instance propVarTestable {β : Prop → Prop} [∀ b : Bool, Testable (β b)] :
-  Testable (NamedBinder var $ ∀ p : Prop, β p)
+instance propVarCheckable {β : Prop → Prop} [∀ b : Bool, Checkable (β b)] :
+  Checkable (NamedBinder var $ ∀ p : Prop, β p)
 where
   run := λ cfg min =>
-    imp (λ h (b : Bool) => h b) <$> Testable.runProp (NamedBinder var $ ∀ b : Bool, β b) cfg min
+    imp (λ h (b : Bool) => h b) <$> Checkable.runProp (NamedBinder var $ ∀ b : Bool, β b) cfg min
 
-instance (priority := high) unusedVarTestable [Nonempty α] [Testable β] :
-  Testable (NamedBinder var $ ∀ _x : α, β)
+instance (priority := high) unusedVarCheckable [Nonempty α] [Checkable β] :
+  Checkable (NamedBinder var $ ∀ _x : α, β)
 where
   run := λ cfg min => do
     if cfg.traceDiscarded || cfg.traceSuccesses then
       slimTrace s!"{var} is unused"
-    let r ← Testable.runProp β cfg min
+    let r ← Checkable.runProp β cfg min
     let finalR := addInfo s!"{var} is irrelevant (unused)" id r
     pure $ imp (· $ Classical.ofNonempty) finalR (PSum.inr $ λ x _ => x)
 
-instance (priority := low) decidableTestable {p : Prop} [PrintableProp p] [Decidable p] : Testable p where
+instance (priority := low) decidableCheckable {p : Prop} [PrintableProp p] [Decidable p] : Checkable p where
   run := λ _ _ =>
     if h : p then
       pure $ success (PSum.inr h)
@@ -368,7 +369,7 @@ instance (priority := low) decidableTestable {p : Prop} [PrintableProp p] [Decid
       let s := printProp p
       pure $ failure h [s!"issue: {s} does not hold"] 0
 
-end Testable
+end Checkable
 
 section PrintableProp
 
@@ -431,28 +432,28 @@ def giveUp (x : Nat) : TestResult p → TestResult p
 | TestResult.failure h xs n => failure h xs n
 
 /-- Try `n` times to find a counter-example for `p`. -/
-def Testable.runSuiteAux (p : Prop) [Testable p] (cfg : Configuration) : TestResult p → Nat → Rand (TestResult p)
+def Checkable.runSuiteAux (p : Prop) [Checkable p] (cfg : Configuration) : TestResult p → Nat → Rand (TestResult p)
 | r, 0 => pure r
 | r, n+1 => do
   let size := (cfg.numInst - n - 1) * cfg.maxSize / cfg.numInst
   if cfg.traceSuccesses then
     slimTrace s!"New sample"
     slimTrace s!"Retrying up to {cfg.numRetries} times until guards hold"
-  let x ← retry (ReaderT.run (Testable.runProp p cfg true) ⟨size⟩) cfg.numRetries
+  let x ← retry (ReaderT.run (Checkable.runProp p cfg true) ⟨size⟩) cfg.numRetries
   match x with
   | (success (PSum.inl ())) => runSuiteAux p cfg r n
   | (gaveUp g) => runSuiteAux p cfg (giveUp g r) n
   | _ => pure $ x
 
 /-- Try to find a counter-example of `p`. -/
-def Testable.runSuite (p : Prop) [Testable p] (cfg : Configuration := {}) : Rand (TestResult p) :=
-  Testable.runSuiteAux p cfg (success $ PSum.inl ()) cfg.numInst
+def Checkable.runSuite (p : Prop) [Checkable p] (cfg : Configuration := {}) : Rand (TestResult p) :=
+  Checkable.runSuiteAux p cfg (success $ PSum.inl ()) cfg.numInst
 
 /-- Run a test suite for `p` in `BaseIO` using the global RNG in `stdGenRef`. -/
-def Testable.checkIO (p : Prop) [Testable p] (cfg : Configuration := {}) : BaseIO (TestResult p) :=
+def Checkable.checkIO (p : Prop) [Checkable p] (cfg : Configuration := {}) : BaseIO (TestResult p) :=
   match cfg.randomSeed with
-  | none => IO.runRand (Testable.runSuite p cfg)
-  | some seed => IO.runRandWith seed (Testable.runSuite p cfg)
+  | none => IO.runRand (Checkable.runSuite p cfg)
+  | some seed => IO.runRandWith seed (Checkable.runSuite p cfg)
 
 end IO
 
@@ -486,32 +487,31 @@ the syntax of `p` and adds `NamedBinder` around universal quantifications
 to improve error messages. This tool can be used in the declaration of a
 function as follows:
 ```lean
-def foo (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p'] : ...
+def foo (p : Prop) (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p'] : ...
 ```
 `p` is the parameter given by the user, `p'` is a definitionally equivalent
 proposition where the quantifiers are annotated with `NamedBinder`.
 -/
 scoped elab "mk_decorations" : tactic => do
-  let goal ← getMainGoal
-  let goalType ← getMVarType goal
-  if let Expr.app (Expr.const ``Decorations.DecorationsOf _ _) body _ := goalType then
+  let goalType ← (← getMainGoal).getType
+  if let Expr.app (.const ``Decorations.DecorationsOf ..) body := goalType then
     closeMainGoal (addDecorations body)
 
 end Decorations
 
 open Decorations in
 /-- Run a test suite for `p` and throw an exception if `p` does not not hold.-/
-def Testable.check (p : Prop) (cfg : Configuration := {}) (p' : Decorations.DecorationsOf p := by mk_decorations) [Testable p'] : IO PUnit := do
-  let x ← Testable.checkIO p' cfg
+def Checkable.check (p : Prop) (cfg : Configuration := {}) (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p'] : IO PUnit := do
+  let x ← Checkable.checkIO p' cfg
   go p' x where /-- HACK: https://github.com/leanprover/lean4/issues/1247 -/ go p' (x : TestResult p') : IO PUnit := do
   match x with
   | TestResult.success _ => if !cfg.quiet then IO.println "Success" else pure ()
   | TestResult.gaveUp n => if !cfg.quiet then IO.println s!"Gave up {n} times"
   | TestResult.failure _ xs n => throw (IO.userError $ formatFailure "Found problems!" xs n)
 
--- #eval Testable.check (∀ (x y z a : Nat) (h1 : 3 < x) (h2 : 3 < y), x - y = y - x) Configuration.verbose
--- #eval Testable.check (∀ x : Nat, ∀ y : Nat, x + y = y + x) Configuration.verbose
--- #eval Testable.check (∀ (x : (Nat × Nat)), x.fst - x.snd - 10 = x.snd - x.fst - 10) Configuration.verbose
--- #eval Testable.check (∀ (x : Nat) (h : 10 < x), 5 < x) Configuration.verbose
+-- #eval Checkable.check (∀ (x y z a : Nat) (h1 : 3 < x) (h2 : 3 < y), x - y = y - x) Configuration.verbose
+-- #eval Checkable.check (∀ x : Nat, ∀ y : Nat, x + y = y + x) Configuration.verbose
+-- #eval Checkable.check (∀ (x : (Nat × Nat)), x.fst - x.snd - 10 = x.snd - x.fst - 10) Configuration.verbose
+-- #eval Checkable.check (∀ (x : Nat) (h : 10 < x), 5 < x) Configuration.verbose
 
 end SlimCheck

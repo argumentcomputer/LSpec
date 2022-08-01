@@ -17,16 +17,16 @@ In order to instantiate terms of `TestSeq`, use the `test` helper function:
 ```
 
 `test` consumes a description a proposition and a next test
-The proposition, however, must have its own instance of `TDecidable`.
+The proposition, however, must have its own instance of `Testable`.
 
-### The `TDecidable` class
+### The `Testable` class
 
-`TDecidable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
+`Testable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.
 
 This is an example of a simple instance for decidability of equalities:
 
 ```lean
-instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
+instance (x y : α) [DecidableEq α] [Repr α] : Testable (x = y) :=
   if h : x = y then
     .isTrue h
   else
@@ -35,8 +35,7 @@ instance (x y : α) [DecidableEq α] [Repr α] : TDecidable (x = y) :=
 
 The custom failure message is optional.
 
-There are more examples of `TDecidable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
-Such instances are automatically imported via `import LSpec`.
+There are more examples of `Testable` instances in [LSpec/Instances.lean](LSpec/Instances.lean).
 
 The user is, of course, free to provide their own instances.
 
@@ -69,18 +68,22 @@ def fourIO : IO Nat :=
 def fiveIO : IO Nat :=
   return 5
 
-def main : IO UInt32 := do
+def main := do
   let four ← fourIO
   let five ← fiveIO
-  lspec do
-    test "fourIO equals 4" (four = 4)
+  lspecIO $
+    test "fourIO equals 4" (four = 4) $
     test "fiveIO equals 5" (five = 5)
 ```
+
+## Integration with `SlimCheck`
+
+TODO
 
 ## Setting up a testing infra
 
 The LSpec package also provides a binary that runs test files automatically.
-The binary becomes available by running `lake build lspec`, which will generate the file `lean_packages/LSpec/build/bin/lspec`.
+Run `lake exe lspec` to build it (if it hasn't been built yet) and execute it.
 
 The `lspec` binary recursively searches for Lean files inside a `Tests` directory.
 For each Lean file present `Tests`, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
@@ -116,8 +119,6 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
-      - name: build LSpec binary
-        run: lake build lspec
-      - name: run LSpec
-        run: ./lean_packages/LSpec/build/bin/lspec
+      - name: run LSpec binary
+        run: lake exe lspec
 ```

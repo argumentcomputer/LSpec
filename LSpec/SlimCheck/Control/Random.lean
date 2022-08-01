@@ -3,7 +3,7 @@ Copyright (c) 2022 Henrik Böving. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Henrik Böving
 -/
-import LSpec.Control.DefaultRange
+import LSpec.SlimCheck.Control.DefaultRange
 
 /-!
 # Rand Monad and Random Class
@@ -27,6 +27,8 @@ defining objects that can be created randomly.
 ## References
   * Similar library in Haskell: https://hackage.haskell.org/package/MonadRandom
 -/
+
+namespace SlimCheck
 
 /-- A monad to generate random objects using the generic generator type `g` -/
 abbrev RandT (g : Type) := StateM (ULift g)
@@ -120,11 +122,13 @@ end Random
       at the same time will get the exact same generator.
 -/
 def IO.runRand (cmd : Rand α) : BaseIO α := do
-  let stdGen ←  stdGenRef.get
+  let stdGen ← IO.stdGenRef.get
   let rng := ULift.up stdGen
   let (res, new) := Id.run <| StateT.run cmd rng
-  stdGenRef.set new.down
+  IO.stdGenRef.set new.down
   pure res
 
 def IO.runRandWith (seed : Nat) (cmd : Rand α) : BaseIO α := do
   pure $ (cmd.run (ULift.up $ mkStdGen seed)).1
+
+end SlimCheck

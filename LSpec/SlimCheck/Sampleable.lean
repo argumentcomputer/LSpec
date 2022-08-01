@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Henrik Böving, Simon Hudon
 -/
 import LSpec.SlimCheck.Gen
+
 /-!
 # `SampleableExt` Class
 This class permits the creation samples of a given type
@@ -63,7 +64,7 @@ random testing
 
 namespace SlimCheck
 
-open Random Gen
+open Random
 
 /-- Given an example `x : α`, `Shrinkable α` gives us a way to shrink it
 and suggest simpler examples. -/
@@ -113,7 +114,7 @@ section Shrinkers
 /-- `Nat.shrink' n` creates a list of smaller natural numbers by
 successively dividing `n` by 2 . For example, `Nat.shrink 5 = [2, 1, 0]`. -/
 partial def Nat.shrink (n : Nat) : List Nat :=
-  if h : 0 < n then
+  if 0 < n then
     let m := n / 2
     let rest := shrink m
     m :: rest
@@ -125,7 +126,7 @@ instance Nat.shrinkable : Shrinkable Nat where
 
 /-- `Fin.shrink` works like `Nat.shrink` but instead operates on `Fin`. -/
 partial def Fin.shrink {n : Nat} (m : Fin n.succ) : List (Fin n.succ) :=
-  if h : 0 < m then
+  if 0 < m then
     let m := m / 2
     let rest := shrink m
     m :: rest
@@ -155,7 +156,7 @@ end Shrinkers
 
 section Samplers
 
-open SampleableExt
+open Gen SampleableExt
 
 instance Nat.sampleableExt : SampleableExt Nat :=
   mkSelfContained (do choose Nat 0 (← getSize))
