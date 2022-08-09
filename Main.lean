@@ -1,16 +1,16 @@
 open System
 
-partial def getFilePaths (fp : FilePath) (acc : List FilePath := []) :
-    IO (List FilePath) := do
+partial def getLeanFilePathsList (fp : FilePath) (acc : Array FilePath := #[]) :
+    IO $ Array FilePath := do
   if ← fp.isDir then
-    let mut extra : List FilePath := []
-    for dirEntry in (← fp.readDir) do
-      for innerFp in ← getFilePaths dirEntry.path do
-        extra := extra.concat innerFp
-    return acc ++ extra
+    let mut extra : Array FilePath := #[]
+    for dirEntry in ← fp.readDir do
+      for innerFp in ← getLeanFilePathsList dirEntry.path do
+        extra := extra.push innerFp
+    return acc.append extra
   else
     if (fp.extension.getD "") == "lean" then
-      return acc.concat fp
+      return acc.push fp
     else
       return acc
 
@@ -25,13 +25,23 @@ def runCmd (descr cmd : String) (args : Array String := #[])
     let out ← IO.Process.spawn { cmd := cmd, args := args }
     return (← out.wait) != 0
 
-def main : IO UInt32 := do
+def getDefaultLeanPaths : IO $ List (String × String) :=
+  return (← getLeanFilePathsList ⟨"Tests"⟩).data.map fun fp =>
+    let path := (fp.toString.splitOn ".").head!
+    (path.replace "/" ".", path.replace "/" "-")
+
+def getUserLeanPaths (args : List String) : List (String × String) :=
+  args.map fun path =>
+    let lib := s!"Tests.{path}"
+    (lib, lib.replace "." "-")
+
+def main (args : List String) : IO UInt32 := do
   let mut exeFiles : List String := []
-  for testCase in (← getFilePaths ⟨"Tests"⟩).map
-      fun fp => (fp.toString.splitOn ".").head! do
-    let exe := testCase.replace "/" "-"
-    let pkg := testCase.replace "/" "."
-    if ← runCmd s!"Building {exe}" "lake" #["build", pkg] true then
+  let leanPaths :=
+    if args.isEmpty then ← getDefaultLeanPaths
+    else getUserLeanPaths args
+  for (lib, exe) in leanPaths do
+    if ← runCmd s!"Building {exe}" "lake" #["build", lib] true then
       IO.eprintln s!"Failed to build {exe}."
       return 1
     exeFiles := exe :: exeFiles

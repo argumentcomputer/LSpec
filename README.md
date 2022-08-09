@@ -122,3 +122,10 @@ jobs:
       - name: run LSpec binary
         run: lake exe lspec
 ```
+
+## Running specific test suites
+
+The `lspec` binary also accepts specific test suites as input.
+For example, you can call `lake exe lspec Foo Some.Bar` and it will build and run `Tests/Foo.lean` and `Tests/Some/Bar.lean`.
+
+This is particularly useful for running certain tests locally.
