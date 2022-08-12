@@ -28,7 +28,8 @@ def runCmd (descr cmd : String) (args : Array String := #[])
 def getDefaultLeanPaths : IO $ List (String × String) :=
   return (← getLeanFilePathsList ⟨"Tests"⟩).data.map fun fp =>
     let path := (fp.toString.splitOn ".").head!
-    (path.replace "/" ".", path.replace "/" "-")
+    let sep := System.FilePath.pathSeparator.toString
+    (path.replace sep ".", path.replace sep "-")
 
 def getUserLeanPaths (args : List String) : List (String × String) :=
   args.map fun path =>
