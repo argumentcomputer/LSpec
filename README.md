@@ -19,6 +19,16 @@ In order to instantiate terms of `TestSeq`, use the `test` helper function:
 `test` consumes a description a proposition and a next test
 The proposition, however, must have its own instance of `Testable`.
 
+You can also collect `TestSeq` into conceptual test groups by using the
+helper function `group`:
+
+```lean
+#check
+  test "Nat equality" (42 = 42) $
+  group "manual group" $
+    test "Nat equality inside group" (4 = 4)
+```
+
 ### The `Testable` class
 
 `Testable` is how Lean is instructed to decide whether certain propositions are resolved as `true` or `false`.

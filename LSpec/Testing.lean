@@ -1,6 +1,6 @@
 import LSpec
 
-open LSpec 
+open LSpec
 
 #lspec
   test "Nat equality" (4 = 5) $
@@ -14,6 +14,20 @@ open LSpec
 -- ✓ bool equality
 -- ✓ list length
 -- ✓ list nonempty
+
+-- Testing a test group. Indents are important!
+def tGroup : TestSeq := group "test group test" $
+  test "Nat inequality" (4 ≠ 5) $
+  test "Nat inequality" (3 ≠ 5) $
+  test "Nat equality" (42 == 42)
+
+#lspec (tGroup ++ tGroup ++ test "Nat equality" (42 = 42))
+#lspec (
+  test "Nat equality" (42 = 42) $
+  group "manual group" (
+    test "Nat equality inside group" (4 = 4)) $
+  tGroup
+  )
 
 /--
 Testing using `#lspec` with something of type `LSpec`.
@@ -77,8 +91,9 @@ def main := do
   let four ← fourIO
   let five ← fiveIO
   lspecIO $
+    tGroup ++ (
     test "fourIO equals 4" (four = 4) $
-    test "fiveIO equals 5" (five = 5)
+    test "fiveIO equals 5" (five = 5))
 
 #eval main
 -- ✓ fourIO equals 4
