@@ -5,7 +5,7 @@ import LSpec.SlimCheck.Checkable
 
 # The core `LSpec` framework
 
-## TODO: Add all relavent documentation
+## TODO: Add all relevant documentation
 
 ## Tags
 
@@ -22,7 +22,7 @@ namespace LSpec
 /--
 # TODO: No longer accurate
 
-A variant of `Decidable` for tests. 
+A variant of `Decidable` for tests.
 
 In the failing case, it may contain an explanatory message.
 -/
@@ -38,10 +38,10 @@ instance (priority := 25) (p : Prop) [d : Decidable p] : Testable p :=
   | isFalse h => .isFalse h "Evaluated to false"
   | isTrue  h => .isTrue  h
 
-open SlimCheck Decorations in 
+open SlimCheck Decorations in
 instance (priority := 25) (p : Prop) [Checkable p] : Testable p :=
   let (res, _) := ReaderT.run (Checkable.runSuite p) (.up mkStdGen)
-  match res with 
+  match res with
   | .success (.inr h) => .isTrue h
   | .success (.inl _) => .isMaybe
   | .gaveUp n => .isFailure s!"Gave up {n} times"
@@ -55,15 +55,21 @@ def formatErrorMsg : Option String → String
 
 section TestSequences
 
-/-- The datatype used to represent a sequence of tests -/
+/--
+  The datatype used to represent a sequence of tests.
+  The `group` constructor represents a purely decorative concept
+  of a test group, allowing to print tests results more prettily.
+-/
 inductive TestSeq
-  | more : String → (prop : Prop) → Testable prop → TestSeq → TestSeq
+  | individual : String → (prop : Prop) → Testable prop → TestSeq → TestSeq
+  | group : String → TestSeq → TestSeq → TestSeq
   | done
 
 /-- Appends two sequences of tests. -/
 def TestSeq.append : TestSeq → TestSeq → TestSeq
   | done, t => t
-  | more d p i n, t' => more d p i $ n.append t'
+  | individual d p i n, t' => individual d p i $ n.append t'
+  | group d ts n, t' => group d ts $ n.append t'
 
 instance : Append TestSeq where
   append := TestSeq.append
@@ -74,7 +80,15 @@ instance exists.
 -/
 def test (descr : String) (p : Prop) [Testable p]
     (next : TestSeq := .done) : TestSeq :=
-  .more descr p inferInstance next
+  .individual descr p inferInstance next
+
+/-
+  Allows collecting a `TestSeq` into a test group to print results
+  in an indented group.
+-/
+def group (descr : String) (groupTests : TestSeq)
+    (next : TestSeq := .done) : TestSeq :=
+  .group descr groupTests next
 
 open SlimCheck Decorations in
 /-- TODO: Add documentation -/
@@ -121,18 +135,23 @@ end TestSequences
 section PureTesting
 
 /-- A generic runner for `TestSeq` -/
-def TestSeq.run (tSeq : TestSeq) : Bool × String :=
+def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
+  let pad := String.mk $ List.replicate indent ' '
   let rec aux (acc : String) : TestSeq → Bool × String
     | .done => (true, acc)
-    | .more d _ (.isTrue _) n =>
-      let (b, m) := aux s!"{acc}✓ {d}\n" n
+    | .group d ts n =>
+      let (pass, msg) := ts.run (indent + 2)
+      let (b, m) := aux s!"{acc}{pad}{d}:\n{msg}" n
+      (pass && b, m)
+    | .individual d _ (.isTrue _) n =>
+      let (b, m) := aux s!"{acc}{pad}✓ {d}\n" n
       (true && b, m)
-    | .more d _ (.isMaybe   msg) n => 
-      let (b, m) := aux s!"{acc}? {d}{formatErrorMsg msg}\n" n
+    | .individual d _ (.isMaybe   msg) n =>
+      let (b, m) := aux s!"{acc}{pad}? {d}{formatErrorMsg msg}\n" n
       (true && b, m)
-    | .more d _ (.isFalse _ msg) n
-    | .more d _ (.isFailure msg) n =>
-      let (b, m) := aux s!"{acc}× {d}{formatErrorMsg msg}\n" n
+    | .individual d _ (.isFalse _ msg) n
+    | .individual d _ (.isFailure msg) n =>
+      let (b, m) := aux s!"{acc}{pad}× {d}{formatErrorMsg msg}\n" n
       (false && b, m)
   aux "" tSeq
 
@@ -166,14 +185,25 @@ class MonadEmit (m) [Monad m] where
 export MonadEmit (emit)
 
 /-- A monadic runner that emits test outputs as they're produced. -/
-def TestSeq.runM [Monad m] [MonadEmit m] : TestSeq → m Bool
+def TestSeq.runM (tSeq : TestSeq) (indent := 0)
+  [Monad m] [MonadEmit m] : m Bool :=
+  let pad := String.mk $ List.replicate indent ' '
+  match tSeq with
   | .done => return true
-  | .more d _ (.isTrue _) n => do emit s!"✓ {d}"; return true && (← n.runM)
-  | .more d _ (.isMaybe msg) n => do
-    emit s!"? {d}{formatErrorMsg msg}"; return true && (← n.runM)
-  | .more d _ (.isFalse _ msg) n
-  | .more d _ (.isFailure msg) n => do
-    emit s!"× {d}{formatErrorMsg msg}"; return false && (← n.runM)
+  | .group d ts n => do
+    emit s!"{d}:"
+    let gb ← ts.runM (indent + 2)
+    return gb && (← n.runM indent)
+  | .individual d _ (.isTrue _) n => do
+    emit $ s!"{pad}✓ {d}"
+    return true && (← n.runM indent)
+  | .individual d _ (.isMaybe msg) n => do
+    emit $ s!"{pad}? {d}{formatErrorMsg msg}"
+    return true && (← n.runM indent)
+  | .individual d _ (.isFalse _ msg) n
+  | .individual d _ (.isFailure msg) n => do
+    emit $ s!"{pad}× {d}{formatErrorMsg msg}"
+    return false && (← n.runM indent)
 
 class MonadTest (m) [Monad m] (α) where
   success : α
