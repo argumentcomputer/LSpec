@@ -78,7 +78,41 @@ def main := do
 
 ## Integration with `SlimCheck`
 
-TODO
+There are 3 main typeclasses associated with any  `SlimCheck` test:
+
+* `Shrinkable` : The typeclass that takes a type `a : α` and returns a `List α` of elements which
+  should be thought of as being "smaller" than `a` (in some sense dependent on the type `α` being 
+  considered).
+* `SampleableExt` : The typeclass of a . 
+  This is roughly equivalent to `QuickCheck`'s `Arbitrary` typeclass. 
+* `Checkable` : The property to be checked by `SlimCheck` must have a `Checkable` instance.
+
+In order to use `SlimCheck` tests for custom data types, the user will need to implement 
+instances of the typeclasses `Shrinkable` and `SampleableExt` for the custom types appearing
+in the properties being tested.
+
+The module [LSpec.SlimCheck.Checkable](LSpec/SlimCheck/Checkable.lean) contains may of 
+the useful definitions and instances that can be used to derive a Checkable instance 
+for a wide variety of properties given just the instances above. If all else fails, the user can 
+also define the Checkable instance by hand. 
+
+Once this is done a `Slimcheck` test is evaluated in a similar way to 
+`LSpec` tests: 
+
+```lean
+#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + n
+
+#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + m
+-- × add_comm
+
+-- ===================
+-- Found problems!
+-- n := 1
+-- m := 0
+-- issue: 1 = 0 does not hold
+-- (0 shrinks)
+-- -------------------
+```
 
 ## Setting up a testing infra
 
