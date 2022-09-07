@@ -6,7 +6,7 @@ import LSpec.SlimCheck.Checkable
 # The core `LSpec` framework
 
 ## Add all relavent documentation
-Check [here](./LSpec/Testing.lean) for examples of uses 
+Check [here](./LSpec/Examples.lean) for examples of uses 
 
 ## Tags
 
