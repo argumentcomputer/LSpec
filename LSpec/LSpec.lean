@@ -81,8 +81,7 @@ Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve 
 and if `p` is Checkable, then so is `p'`.
 -/
 def check (descr : String) (p : Prop)
-  (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']
-    (next : TestSeq := .done) : TestSeq :=
+    (next : TestSeq := .done) (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']: TestSeq :=
   test descr p' next
 
 inductive ExpectationFailure (exp got : String) : Prop
