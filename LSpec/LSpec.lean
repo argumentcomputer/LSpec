@@ -5,7 +5,8 @@ import LSpec.SlimCheck.Checkable
 
 # The core `LSpec` framework
 
-## TODO: Add all relevant documentation
+## Add all relavent documentation
+Check [here](./LSpec/Examples.lean) for examples of uses 
 
 ## Tags
 
@@ -20,11 +21,9 @@ testing frameworks
 namespace LSpec
 
 /--
-# TODO: No longer accurate
+The main typeclass of propositions that can be tested by `LSpec`. 
 
-A variant of `Decidable` for tests.
-
-In the failing case, it may contain an explanatory message.
+In non-succeeding cases, it may contain an explanatory message.
 -/
 class inductive Testable (p : Prop) where
   | isTrue  (h : p)
@@ -91,10 +90,12 @@ def group (descr : String) (groupTests : TestSeq)
   .group descr groupTests next
 
 open SlimCheck Decorations in
-/-- TODO: Add documentation -/
+/-- 
+Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve error messages
+and if `p` is Checkable, then so is `p'`.
+-/
 def check (descr : String) (p : Prop)
-  (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']
-    (next : TestSeq := .done) : TestSeq :=
+    (next : TestSeq := .done) (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']: TestSeq :=
   test descr p' next
 
 inductive ExpectationFailure (exp got : String) : Prop

@@ -61,25 +61,6 @@ def test2 := test "true" true
 -- × array eq
 --     Expected to be equal: '#[1, 2, 3]' and '#[0, 1, 2]'
 
-#lspec test "all lt" $ ∀ n, n < 10 → n - 5 < 5
--- ✓ all lt
-
-#lspec test "all lt" $ ∀ n, n < 15 → n - 10 = 0
--- × all lt
---     Fails on input 11. Expected to be equal: '1' and '0'
-
-#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + n
-
-#lspec check "add_comm" $ ∀ n m : Nat, n + m = m + m
--- × add_comm
-
--- ===================
--- Found problems!
--- n := 1
--- m := 0
--- issue: 1 = 0 does not hold
--- (0 shrinks)
--- -------------------
 
 def fourIO : IO Nat :=
   return 4
@@ -99,3 +80,29 @@ def main := do
 -- ✓ fourIO equals 4
 -- ✓ fiveIO equals 5
 -- 0
+
+#lspec test "all lt" $ ∀ n, n < 10 → n - 5 < 5
+-- ✓ all lt
+
+#lspec test "all lt" $ ∀ n, n < 15 → n - 10 = 0
+-- × all lt
+--     Fails on input 11. Expected to be equal: '1' and '0'
+
+section slimcheck_tests
+
+#lspec check "add_comm" (∀ n m : Nat, n + m = m + n)
+-- ? add_comm
+
+#lspec check "add_comm" (∀ n m : Nat, n + m = m + m) $ check "mul_comm" $ ∀ n m : Nat, n * m = m * n
+-- × add_comm
+
+-- ===================
+-- Found problems!
+-- n := 1
+-- m := 0
+-- issue: 1 = 0 does not hold
+-- (0 shrinks)
+-------------------
+-- ? mul_comm
+
+end slimcheck_tests
