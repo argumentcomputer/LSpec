@@ -5,7 +5,7 @@ package LSpec
 
 lean_lib LSpec
 
-@[defaultTarget]
+@[default_target]
 lean_exe lspec {
   root := `Main
 }
