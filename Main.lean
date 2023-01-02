@@ -1,57 +1,49 @@
 open System
 
-partial def getLeanFilePathsList (fp : FilePath) (acc : Array FilePath := #[]) :
-    IO $ Array FilePath := do
-  if ← fp.isDir then
-    let mut extra : Array FilePath := #[]
-    for dirEntry in ← fp.readDir do
-      for innerFp in ← getLeanFilePathsList dirEntry.path do
-        extra := extra.push innerFp
-    return acc.append extra
-  else
-    if (fp.extension.getD "") == "lean" then
-      return acc.push fp
-    else
-      return acc
+def runCmd (cmd : String) (args : Array String) (testing : Bool) :
+    IO $ Option String := do
+  let out ← IO.Process.output { cmd := cmd, args := args }
+  if testing then IO.println out.stdout
+  if out.exitCode == 0 then return none
+  else return some out.stderr
 
-def runCmd (descr cmd : String) (args : Array String := #[])
-    (building : Bool) : IO Bool := do
-  IO.println descr
-  if building then
-    let out ← IO.Process.output { cmd := cmd, args := args }
-    if out.exitCode == 0 then return false
-    else IO.eprintln out.stderr; return true
-  else
-    let out ← IO.Process.spawn { cmd := cmd, args := args }
-    return (← out.wait) != 0
+def getTestPathsFromLake : IO $ List FilePath := do
+  let source ← IO.FS.readFile ⟨"lakefile.lean"⟩
+  let lines := source.splitOn "\n" |>.filter fun line =>
+    !(line.trimLeft |>.startsWith "--")
+  return ("\n".intercalate lines).splitOn "lean_exe"
+    |>.map (·.trimLeft)
+    |>.filter (·.startsWith "Tests.")
+    |>.map fun str =>
+      let str := str.append "\n" |>.replace "\n" " " |>.replace "\t" " "
+      let module := str.splitOn " " |>.head!
+      mkFilePath (module.splitOn ".") |>.withExtension "lean"
 
-def getDefaultLeanPaths : IO $ List (String × String) :=
-  return (← getLeanFilePathsList ⟨"Tests"⟩).data.map fun fp =>
-    let path := (fp.toString.splitOn ".").head!
-    let sep := System.FilePath.pathSeparator.toString
-    (path.replace sep ".", path.replace sep "-")
-
-def getUserLeanPaths (args : List String) : List (String × String) :=
-  args.map fun path =>
-    let lib := s!"Tests.{path}"
-    (lib, lib.replace "." "-")
+def System.FilePath.noExtensionWithSep (p : FilePath) (sep : String) : String :=
+  p.withExtension "" |>.toString.replace FilePath.pathSeparator.toString sep
 
 def main (args : List String) : IO UInt32 := do
-  let mut exeFiles : List String := []
   let leanPaths :=
-    if args.isEmpty then ← getDefaultLeanPaths
-    else getUserLeanPaths args
-  for (lib, exe) in leanPaths do
-    if ← runCmd s!"Building {exe}" "lake" #["build", lib] true then
-      IO.eprintln s!"Failed to build {exe}."
-      return 1
-    exeFiles := exe :: exeFiles
-  let mut hasFailure : Bool := false
-  for exe in exeFiles.reverse do
-    hasFailure := hasFailure ||
-      (← runCmd s!"\nRunning {exe}" s!"./build/bin/{exe}" #[] false)
-  if !hasFailure then
+    if args.isEmpty then ← getTestPathsFromLake else args.map FilePath.mk
+  if leanPaths.isEmpty then
+    IO.println "No tests to run"
+    return 0
+  for path in leanPaths do
+    let lib := path.noExtensionWithSep "."
+    IO.println s!"Building {lib}"
+    match ← runCmd "lake" #["build", lib] false with
+    | some msg => IO.eprintln s!"{msg}\nFailed to build {lib}"; return 1
+    | none => pure ()
+  let mut failures := #[]
+  for path in leanPaths do
+    let exe := path.noExtensionWithSep "-"
+    let path : FilePath := "." / "build" / "bin" / exe
+    IO.println s!"\nRunning {path}"
+    match ← runCmd path.toString #[] true with
+    | some msg => failures := failures.push msg
+    | none => pure ()
+  if failures.isEmpty then
     IO.println "\nAll tests passed!"
     return 0
-  IO.eprintln "\nSome test failed!"
+  IO.eprintln s!"\nFailed tests:\n{"\n".intercalate failures.data}"
   return 1

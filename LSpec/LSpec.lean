@@ -180,30 +180,30 @@ end PureTesting
 
 section MonadicTesting
 
-class MonadEmit (m) [Monad m] where
+class TestMonadEmit (m) [Monad m] where
   emit : String → m Unit
-
-export MonadEmit (emit)
+  fail : String → m Unit
 
 /-- A monadic runner that emits test outputs as they're produced. -/
-def TestSeq.runM (tSeq : TestSeq) (indent := 0)
-  [Monad m] [MonadEmit m] : m Bool :=
+def TestSeq.runM (tSeq : TestSeq) (indent := 0) [Monad m] [h : TestMonadEmit m] :
+    m Bool :=
   let pad := String.mk $ List.replicate indent ' '
   match tSeq with
   | .done => return true
   | .group d ts n => do
-    emit s!"{d}:"
+    h.emit s!"{d}:"
     let gb ← ts.runM (indent + 2)
     return gb && (← n.runM indent)
   | .individual d _ (.isTrue _) n => do
-    emit $ s!"{pad}✓ {d}"
+    h.emit s!"{pad}✓ {d}"
     return true && (← n.runM indent)
   | .individual d _ (.isMaybe msg) n => do
-    emit $ s!"{pad}? {d}{formatErrorMsg msg}"
+    h.emit s!"{pad}? {d}{formatErrorMsg msg}"
     return true && (← n.runM indent)
   | .individual d _ (.isFalse _ msg) n
   | .individual d _ (.isFailure msg) n => do
-    emit $ s!"{pad}× {d}{formatErrorMsg msg}"
+    let msg := s!"{pad}× {d}{formatErrorMsg msg}"
+    h.emit msg; h.fail msg -- also emitting messages from failed tests
     return false && (← n.runM indent)
 
 class MonadTest (m) [Monad m] (α) where
@@ -211,14 +211,14 @@ class MonadTest (m) [Monad m] (α) where
   failure : α
   nEq     : success ≠ failure
 
-def succeed [Monad m] [inst : MonadTest m α] : m α :=
-  return inst.success
+def succeed [Monad m] [h : MonadTest m α] : m α :=
+  return h.success
 
-def fail [Monad m] [inst : MonadTest m α] : m α :=
-  return inst.failure
+def fail [Monad m] [h : MonadTest m α] : m α :=
+  return h.failure
 
-/-- Runs a `TestSeq` in a monad with `MonadEmit` and `MonadTest`. -/
-def lspecM [Monad m] [MonadEmit m] [MonadTest m α] (t : TestSeq) : m α := do
+/-- Runs a `TestSeq` in a monad with `TestMonadEmit` and `MonadTest`. -/
+def lspecM [Monad m] [TestMonadEmit m] [MonadTest m α] (t : TestSeq) : m α := do
   if ← t.runM then succeed
   else fail
 
@@ -226,7 +226,7 @@ def lspecM [Monad m] [MonadEmit m] [MonadTest m α] (t : TestSeq) : m α := do
 Interspersedly creates a `TestSeq` from each element `β` of a list with a
 function `β → m TestSeq` and runs the test sequence.
 -/
-def lspecEachM [Monad m] [MonadEmit m] [MonadTest m α]
+def lspecEachM [Monad m] [TestMonadEmit m] [MonadTest m α]
     (l : List β) (f : β → m TestSeq) : m α := do
   let success ← l.foldlM (init := true) fun acc a => do
     pure $ acc && (← ( ← f a).runM)
@@ -234,8 +234,8 @@ def lspecEachM [Monad m] [MonadEmit m] [MonadTest m α]
 
 section IOTesting
 
-instance : MonadEmit IO :=
-  ⟨IO.println⟩
+instance : TestMonadEmit IO :=
+  ⟨IO.println, IO.eprintln⟩
 
 instance : MonadTest IO UInt32 :=
   ⟨0, 1, by decide⟩
