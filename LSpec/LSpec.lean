@@ -101,7 +101,7 @@ def check (descr : String) (p : Prop)
 inductive ExpectationFailure (exp got : String) : Prop
 
 instance : Testable (ExpectationFailure exp got) :=
-  .isFailure s!"Expected {repr exp} but got {repr got}"
+  .isFailure s!"Expected '{repr exp}' but got '{repr got}'"
 
 /-- A test pipeline to run a function assuming that `opt` is `Option.some _` -/
 def withOptionSome (descr : String) (opt : Option α) (f : α → TestSeq) :
