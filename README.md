@@ -67,9 +67,9 @@ Examples:
 
 An important note is that a failing test will raise an error, interrupting the building process.
 
-#### The `lspec` function
+#### The `lspecIO` function
 
-`lspec` is meant to be used in files to be compiled and integrated in a testing infrastructure, as shown soon.
+`lspecIO` is meant to be used in files to be compiled and integrated in a testing infrastructure, as shown soon.
 
 ```lean
 def fourIO : IO Nat :=
@@ -129,10 +129,10 @@ Once this is done a `Slimcheck` test is evaluated in a similar way to
 The LSpec package also provides a binary that runs test files automatically.
 Run `lake exe lspec` to build it (if it hasn't been built yet) and execute it.
 
-The `lspec` binary recursively searches for Lean files inside a `Tests` directory.
-For each Lean file present `Tests`, there must exist a corresponding `lean_exe` in your `lakefile.lean`.
+The `lspec` binary searches for binary executables defined in `lakefile.lean` whose module name starts with "Tests".
+Then it builds and runs each of them.
 
-For instance, suppose that the directory `Tests` contains the files `Tests/F1.lean` and `Tests/Some/Dir/F2.lean`.
+For instance, suppose you want to run the test suites defined in `Tests/F1.lean` and `Tests/Some/Dir/F2.lean`.
 In this case, you need to add the following lines to your `lakefile.lean`:
 
 ```lean
@@ -143,14 +143,14 @@ lean_exe Tests.Some.Dir.F2
 ## Running specific test suites
 
 The `lspec` binary also accepts specific test suites as input.
-For example, you can call `lake exe lspec Foo Some.Bar` and it will build and run `Tests/Foo.lean` and `Tests/Some/Bar.lean`.
+For example, you can call `lake exe lspec Tests/Foo.lean Tests/Some/Bar.lean` and it will build and run those.
 
-This is particularly useful for running certain tests locally.
+This is particularly useful for running test suites locally.
 
 ### Using LSpec on CI
 
-To integrate LSpec to GitHub workflows, run `lake exe lspec-ci <branch list>`.
-The singleton `["main"]` is the default branch list.
+To integrate LSpec to GitHub workflows, run `lake exe lspec-ci branch1 branch2`.
+The singleton containing `main` is the default branch list.
 `lspec-ci` will create a file `.github/workflows/lspec.yml` with the content:
 
 ```yml
