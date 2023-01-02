@@ -140,9 +140,18 @@ lean_exe Tests.F1
 lean_exe Tests.Some.Dir.F2
 ```
 
+## Running specific test suites
+
+The `lspec` binary also accepts specific test suites as input.
+For example, you can call `lake exe lspec Foo Some.Bar` and it will build and run `Tests/Foo.lean` and `Tests/Some/Bar.lean`.
+
+This is particularly useful for running certain tests locally.
+
 ### Using LSpec on CI
 
-To integrate LSpec to GitHub workflows, create the file `.github/workflows/lspec.yml` with the content:
+To integrate LSpec to GitHub workflows, run `lake exe lspec-ci <branch list>`.
+The singleton `["main"]` is the default branch list.
+`lspec-ci` will create a file `.github/workflows/lspec.yml` with the content:
 
 ```yml
 name: "LSpec CI"
@@ -150,7 +159,9 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - <branch1>
+      - <branch2>
+      - ...
 jobs:
   build:
     name: Build
@@ -166,10 +177,3 @@ jobs:
       - name: run LSpec binary
         run: lake exe lspec
 ```
-
-## Running specific test suites
-
-The `lspec` binary also accepts specific test suites as input.
-For example, you can call `lake exe lspec Foo Some.Bar` and it will build and run `Tests/Foo.lean` and `Tests/Some/Bar.lean`.
-
-This is particularly useful for running certain tests locally.
