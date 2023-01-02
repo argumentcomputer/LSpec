@@ -38,12 +38,12 @@ def main (args : List String) : IO UInt32 := do
   for path in leanPaths do
     let exe := path.noExtensionWithSep "-"
     let path : FilePath := "." / "build" / "bin" / exe
-    IO.println s!"\nRunning {path}"
+    IO.println s!"Running {path}"
     match ← runCmd path.toString #[] true with
     | some msg => failures := failures.push msg
     | none => pure ()
   if failures.isEmpty then
-    IO.println "\nAll tests passed!"
+    IO.println "All tests passed!"
     return 0
-  IO.eprintln s!"\nFailed tests:\n{"\n".intercalate failures.data}"
+  IO.eprint s!"Failed tests:\n{String.join failures.data}"
   return 1
