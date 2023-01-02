@@ -7,7 +7,6 @@ lean_lib LSpec
 
 @[default_target]
 lean_exe lspec where
-  supportInterpreter := true
   root := `Main
 
 lean_exe «lspec-ci» where
