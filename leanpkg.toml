@@ -1,0 +1,4 @@
+[package]
+name = "LSpec"
+version = "1.0"
+lean_version = "4.0.0-m5"
