@@ -37,7 +37,7 @@ def main (args : List String) : IO UInt32 := do
   let mut failures := #[]
   for path in leanPaths do
     let exe := path.noExtensionWithSep "-"
-    let path : FilePath := "." / "build" / "bin" / exe
+    let path : FilePath := "." / ".lake" / "build" / "bin" / exe
     IO.println s!"Running {path}"
     match ← runCmd path.toString #[] true with
     | some msg => failures := failures.push msg
