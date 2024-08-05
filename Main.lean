@@ -23,8 +23,8 @@ def System.FilePath.noExtensionWithSep (p : FilePath) (sep : String) : String :=
   p.withExtension "" |>.toString.replace FilePath.pathSeparator.toString sep
 
 def main (args : List String) : IO UInt32 := do
-  let leanPaths :=
-    if args.isEmpty then ← getTestPathsFromLake else args.map FilePath.mk
+  let leanPaths ←
+    if args.isEmpty then getTestPathsFromLake else pure $ args.map FilePath.mk
   if leanPaths.isEmpty then
     IO.println "No tests to run"
     return 0
