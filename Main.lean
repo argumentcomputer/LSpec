@@ -45,5 +45,5 @@ def main (args : List String) : IO UInt32 := do
   if failures.isEmpty then
     IO.println "All tests passed!"
     return 0
-  IO.eprint s!"Failed tests:\n{String.join failures.data}"
+  IO.eprint s!"Failed tests:\n{String.join failures.toList}"
   return 1
