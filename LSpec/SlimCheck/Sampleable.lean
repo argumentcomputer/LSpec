@@ -162,7 +162,7 @@ instance Nat.sampleableExt : SampleableExt Nat :=
   mkSelfContained (do choose Nat 0 (← getSize))
 
 instance Fin.sampleableExt {n : Nat} : SampleableExt (Fin (n.succ)) :=
-  mkSelfContained (do choose (Fin n.succ) (Fin.ofNat 0) (Fin.ofNat (← getSize)))
+  mkSelfContained (do choose (Fin n.succ) (Fin.ofNat' _ 0) (Fin.ofNat' _ (← getSize)))
 
 instance Int.sampleableExt : SampleableExt Int :=
   mkSelfContained (do choose Int (-(← getSize)) (← getSize))
