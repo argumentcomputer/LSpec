@@ -6,7 +6,8 @@ import LSpec.SlimCheck.Checkable
 # The core `LSpec` framework
 
 ## Add all relavent documentation
-Check [here](./LSpec/Examples.lean) for examples of uses 
+
+Check [here](./LSpec/Examples.lean) for examples of uses
 
 ## Tags
 
@@ -15,13 +16,12 @@ testing frameworks
 ## References
 
   * https://hackage.haskell.org/package/hspec
-
 -/
 
 namespace LSpec
 
 /--
-The main typeclass of propositions that can be tested by `LSpec`. 
+The main typeclass of propositions that can be tested by `LSpec`.
 
 In non-succeeding cases, it may contain an explanatory message.
 -/
@@ -90,7 +90,7 @@ def group (descr : String) (groupTests : TestSeq)
   .group descr groupTests next
 
 open SlimCheck Decorations in
-/-- 
+/--
 Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve error messages
 and if `p` is Checkable, then so is `p'`.
 -/
