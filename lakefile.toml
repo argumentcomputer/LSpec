@@ -1,14 +1,6 @@
 name = "LSpec"
-version = "1.0.0"
+version = "2.0.0"
 defaultTargets = ["lspec"]
 
 [[lean_lib]]
 name = "LSpec"
-
-[[lean_exe]]
-name = "lspec"
-root = "Main"
-
-[[lean_exe]]
-name = "lspec-ci"
-root = "CI"
