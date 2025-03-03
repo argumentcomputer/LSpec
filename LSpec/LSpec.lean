@@ -94,8 +94,8 @@ open SlimCheck Decorations in
 Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve error messages
 and if `p` is Checkable, then so is `p'`.
 -/
-def check (descr : String) (p : Prop)
-    (next : TestSeq := .done) (p' : Decorations.DecorationsOf p := by mk_decorations) [Checkable p']: TestSeq :=
+def check (descr : String) (p : Prop) (next : TestSeq := .done)
+    (p' : DecorationsOf p := by mk_decorations) [Checkable p'] : TestSeq :=
   test descr p' next
 
 inductive ExpectationFailure (exp got : String) : Prop
@@ -131,10 +131,6 @@ def withExceptError (descr : String) (exc : Except ε α) [ToString α]
   | .error e => test descr true $ f e
   | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
 
-end TestSequences
-
-section PureTesting
-
 /-- A generic runner for `TestSeq` -/
 def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
   let pad := String.mk $ List.replicate indent ' '
@@ -144,17 +140,16 @@ def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
       let (pass, msg) := ts.run (indent + 2)
       let (b, m) := aux s!"{acc}{pad}{d}:\n{msg}" n
       (pass && b, m)
-    | .individual d _ (.isTrue _) n =>
-      let (b, m) := aux s!"{acc}{pad}✓ {d}\n" n
-      (true && b, m)
+    | .individual d _ (.isTrue _) n => aux s!"{acc}{pad}✓ {d}\n" n
     | .individual d _ (.isMaybe   msg) n =>
-      let (b, m) := aux s!"{acc}{pad}? {d}{formatErrorMsg msg}\n" n
-      (true && b, m)
+      aux s!"{acc}{pad}? {d}{formatErrorMsg msg}\n" n
     | .individual d _ (.isFalse _ msg) n
     | .individual d _ (.isFailure msg) n =>
-      let (b, m) := aux s!"{acc}{pad}× {d}{formatErrorMsg msg}\n" n
-      (false && b, m)
+      let (_b, m) := aux s!"{acc}{pad}× {d}{formatErrorMsg msg}\n" n
+      (false, m)
   aux "" tSeq
+
+end TestSequences
 
 /--
 Runs a `TestSeq` with an output meant for the Lean Infoview.
@@ -176,97 +171,67 @@ A custom command to run `LSpec` tests. Example:
 macro "#lspec " term:term : command =>
   `(#eval LSpec.runInTermElabMAsUnit $term)
 
-end PureTesting
-
-section MonadicTesting
-
-class TestMonadEmit (m) [Monad m] where
-  emit : String → m Unit
-  fail : String → m Unit
-
-/-- A monadic runner that emits test outputs as they're produced. -/
-def TestSeq.runM (tSeq : TestSeq) (indent := 0) [Monad m] [h : TestMonadEmit m] :
-    m Bool :=
-  let pad := String.mk $ List.replicate indent ' '
-  match tSeq with
-  | .done => return true
-  | .group d ts n => do
-    h.emit s!"{d}:"
-    let gb ← ts.runM (indent + 2)
-    return gb && (← n.runM indent)
-  | .individual d _ (.isTrue _) n => do
-    h.emit s!"{pad}✓ {d}"
-    return true && (← n.runM indent)
-  | .individual d _ (.isMaybe msg) n => do
-    h.emit s!"{pad}? {d}{formatErrorMsg msg}"
-    return true && (← n.runM indent)
-  | .individual d _ (.isFalse _ msg) n
-  | .individual d _ (.isFailure msg) n => do
-    let msg := s!"{pad}× {d}{formatErrorMsg msg}"
-    h.emit msg; h.fail msg -- also emitting messages from failed tests
-    return false && (← n.runM indent)
-
-class MonadTest (m) [Monad m] (α) where
-  success : α
-  failure : α
-  nEq     : success ≠ failure
-
-def succeed [Monad m] [h : MonadTest m α] : m α :=
-  return h.success
-
-def fail [Monad m] [h : MonadTest m α] : m α :=
-  return h.failure
-
-/-- Runs a `TestSeq` in a monad with `TestMonadEmit` and `MonadTest`. -/
-def lspecM [Monad m] [TestMonadEmit m] [MonadTest m α] (t : TestSeq) : m α := do
-  if ← t.runM then succeed
-  else fail
-
+open Std (HashMap) in
 /--
-Interspersedly creates a `TestSeq` from each element `β` of a list with a
-function `β → m TestSeq` and runs the test sequence.
+Consumes a map of string-keyed test suites and returns a test function meant to
+be used via CLI.
+
+The arguments `args` are matched against the test suite keys. If a key starts
+with one of the elements in `args`, then its respective test suite will be
+marked to run.
+
+If the empty list is provided, all test suites will run.
 -/
-def lspecEachM [Monad m] [TestMonadEmit m] [MonadTest m α]
-    (l : List β) (f : β → m TestSeq) : m α := do
-  let success ← l.foldlM (init := true) fun acc a => do
-    pure $ acc && (← ( ← f a).runM)
-  if success then succeed else fail
+def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt32 := do
+  -- Compute the filtered map containing the test suites to run
+  let filteredMap :=
+    if args.isEmpty then map
+    else Id.run do
+      let mut acc := .empty
+      for arg in args do
+        for (key, tSeq) in map do
+          if key.startsWith arg then
+            acc := acc.insert key tSeq
+      pure acc
 
-section IOTesting
+  -- Accumulate error messages
+  let mut testsWithErrors : HashMap String (Array String) := .empty
+  for (key, tSeqs) in filteredMap do
+    IO.println key
+    for tSeq in tSeqs do
+      let (success, msg) := tSeq.run (indent := 2)
+      if success then IO.println msg
+      else
+        IO.eprintln msg
+        if let some msgs := testsWithErrors[key]? then
+          testsWithErrors := testsWithErrors.insert key $ msgs.push msg
+        else
+          testsWithErrors := testsWithErrors.insert key #[msg]
 
-instance : TestMonadEmit IO :=
-  ⟨IO.println, IO.eprintln⟩
+  -- Early return 0 when there are no errors
+  if testsWithErrors.isEmpty then return 0
 
-instance : MonadTest IO UInt32 :=
-  ⟨0, 1, by decide⟩
-
-/--
-Runs a `TestSeq` with an output meant for the terminal.
-
-This function is designed to be plugged to a `main` function from a Lean file
-that can be compiled. Example:
-
-```lean
-def main := lspecIO $
-  test "four equals four" (4 = 4)
-```
--/
-def lspecIO (t : TestSeq) : IO UInt32 :=
-  lspecM t
+  -- Print error messages and then return 1
+  IO.eprintln "-------------------------------- Failing tests ---------------------------------"
+  for (key, msgs) in testsWithErrors do
+    IO.eprintln key
+    for msg in msgs do
+      IO.eprintln msg
+  return 1
 
 /--
 Runs a sequence of tests that are created from a `List α` and a function
 `α → IO TestSeq`. Instead of creating all tests and running them consecutively,
 this function alternates between test creation and test execution.
 
-It's rather useful for when the test creation process involves heavy
-computations in `IO` (e.g. when `f` reads data from files and processes it).
+It's useful when the test creation process involves heavy computations in `IO`
+(e.g. when `f` reads data from files and processes it).
 -/
-def lspecEachIO (l : List α) (f : α → IO TestSeq) : IO UInt32 :=
-  lspecEachM l f
-
-end IOTesting
-
-end MonadicTesting
+def lspecEachIO (l : List α) (f : α → IO TestSeq) : IO UInt32 := do
+  let success ← l.foldlM (init := true) fun acc a => do
+    match (← f a).run with
+    | (true, msg) => IO.println msg; pure acc
+    | (false, msg) => IO.eprintln msg; pure false
+  if success then return 0 else return 1
 
 end LSpec
