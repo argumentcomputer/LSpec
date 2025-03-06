@@ -48,14 +48,14 @@ instance : Bounded Bool where
 
 instance : DefaultRange Nat where
   lo := 0
-  hi := USize.size
+  hi := USize.size - 1
 
 instance {n : Nat} : Bounded (Fin n.succ) where
   lo := ⟨0, n.succ_pos⟩
   hi := ⟨n, n.lt_succ_self⟩
 
 instance : DefaultRange Int where
-  lo :=  - Int.ofNat (USize.size / 2)
+  lo := - Int.ofNat (USize.size / 2)
   hi := Int.ofNat (USize.size / 2 - 1)
 
 end SlimCheck

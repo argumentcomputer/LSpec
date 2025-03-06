@@ -173,7 +173,7 @@ instance Bool.sampleableExt : SampleableExt Bool :=
 /-- This can be specialized into customized `SampleableExt Char` instances.
 The resulting instance has `1 / length` chances of making an unrestricted choice of characters
 and it otherwise chooses a character from `chars` with uniform probabilities.  -/
-def Char.sampleable (length : Nat) (chars : List Char) : SampleableExt Char :=
+def Char.sampleable (length : Nat) (chars : Array Char) : SampleableExt Char :=
     mkSelfContained do
       let x ←  choose Nat 0 length
       if x == 0 then
@@ -183,7 +183,8 @@ def Char.sampleable (length : Nat) (chars : List Char) : SampleableExt Char :=
         elements chars
 
 instance Char.sampleableDefault : SampleableExt Char :=
-  Char.sampleable 3 " 0123abcABC:,;`\\/".toList
+  Char.sampleable 3
+    #[' ', '0', '1', '2', '3', 'a', 'b', 'c', 'A', 'B', 'C', ':', ',', ';', '`', '\\', '/']
 
 instance Prod.sampleableExt {α β : Type u} [SampleableExt α] [SampleableExt β] :
     SampleableExt (α × β) where

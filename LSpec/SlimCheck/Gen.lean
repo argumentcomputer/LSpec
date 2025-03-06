@@ -37,10 +37,6 @@ def chooseAny (α : Type u) [Random α] [DefaultRange α] : Gen α :=
 def choose (α : Type u) [Random α] (lo hi : α) : Gen α :=
   λ _ => randBound α lo hi
 
-/-- Generate a `Nat` example between `x` and `y` (exclusively). -/
-def chooseNatLt (lo hi : Nat) : Gen Nat :=
-  choose Nat (lo.succ) hi
-
 /-- Get access to the size parameter of the `Gen` monad. -/
 def getSize : Gen Nat :=
   return (← read).down
@@ -63,17 +59,22 @@ by the size parameter of `Gen`. -/
 def listOf (x : Gen α) : Gen (List α) :=
   arrayOf x >>= pure ∘ Array.toList
 
-/-- Given a list of example generators, choose one to create an example. -/
+/-- Given an array of example generators, choose one to create an example. -/
 def oneOf [Inhabited α] (xs : Array (Gen α)) : Gen α := do
-  let x ← chooseNatLt 0 xs.size
-  xs.get! x
+  let i ← choose Nat 0 (xs.size - 1)
+  if h : i < xs.size then
+    xs.get i h
+  else -- The array is empty
+    pure default
 
-/-- Given a list of examples, choose one to create an example. -/
-def elements [Inhabited α] (xs : List α) : Gen α := do
-  let x ← chooseNatLt 0 xs.length
-  pure $ xs.get! x
+/-- Given an array of examples, choose one. -/
+def elements [Inhabited α] (xs : Array α) : Gen α := do
+  let i ← choose Nat 0 (xs.size - 1)
+  if h : i < xs.size then
+    return xs.get i h
+  else -- The array is empty
+    pure default
 
-open List in
 /-- Generate a random permutation of a given list. -/
 def permutationOf : (xs : List α) → Gen (List α)
 | [] => pure []
