@@ -2,7 +2,6 @@ import Lean
 import LSpec.SlimCheck.Checkable
 
 /-!
-
 # The core `LSpec` framework
 
 ## Add all relavent documentation
@@ -37,15 +36,14 @@ instance (priority := 25) (p : Prop) [d : Decidable p] : Testable p :=
   | isFalse h => .isFalse h "Evaluated to false"
   | isTrue  h => .isTrue  h
 
-open SlimCheck Decorations in
-instance (priority := 25) (p : Prop) [Checkable p] : Testable p :=
-  let (res, _) := ReaderT.run (Checkable.runSuite p) (.up mkStdGen)
+open SlimCheck in
+instance instTestableOfCheckable (p : Prop) (cfg : Configuration) [Checkable p] : Testable p :=
+  let (res, _) := ReaderT.run (Checkable.runSuite p cfg) (.up mkStdGen)
   match res with
   | .success (.inr h) => .isTrue h
   | .success (.inl _) => .isMaybe
   | .gaveUp n => .isFailure s!"Gave up {n} times"
-  | .failure h xs n =>
-    .isFalse h $ Checkable.formatFailure "Found problems!" xs n
+  | .failure h xs n => .isFalse h $ Checkable.formatFailure "Found problems!" xs n
 
 /-- Formats the extra error message from `Testable` failures. -/
 def formatErrorMsg : Option String → String
@@ -81,10 +79,7 @@ def test (descr : String) (p : Prop) [Testable p]
     (next : TestSeq := .done) : TestSeq :=
   .individual descr p inferInstance next
 
-/-
-  Allows collecting a `TestSeq` into a test group to print results
-  in an indented group.
--/
+/-- Allows collecting a `TestSeq` into a test group to print results in a group. -/
 def group (descr : String) (groupTests : TestSeq)
     (next : TestSeq := .done) : TestSeq :=
   .group descr groupTests next
@@ -94,8 +89,9 @@ open SlimCheck Decorations in
 Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve error messages
 and if `p` is Checkable, then so is `p'`.
 -/
-def check (descr : String) (p : Prop) (next : TestSeq := .done)
+def check (descr : String) (p : Prop) (next : TestSeq := .done) (cfg : Configuration := {})
     (p' : DecorationsOf p := by mk_decorations) [Checkable p'] : TestSeq :=
+  haveI : Testable p' := instTestableOfCheckable p' cfg
   test descr p' next
 
 inductive ExpectationFailure (exp got : String) : Prop

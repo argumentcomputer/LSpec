@@ -31,11 +31,11 @@ namespace Gen
 
 /-- Lift `Random.random` to the `Gen` monad. -/
 def chooseAny (α : Type u) [Random α] [DefaultRange α] : Gen α :=
-  λ _ => rand α
+  fun _ => rand α
 
 /-- Lift `BoundedRandom.randomR` to the `Gen` monad. -/
 def choose (α : Type u) [Random α] (lo hi : α) : Gen α :=
-  λ _ => randBound α lo hi
+  fun _ => randBound α lo hi
 
 /-- Get access to the size parameter of the `Gen` monad. -/
 def getSize : Gen Nat :=

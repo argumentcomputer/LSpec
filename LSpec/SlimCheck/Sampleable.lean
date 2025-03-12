@@ -69,7 +69,7 @@ open Random
 /-- Given an example `x : α`, `Shrinkable α` gives us a way to shrink it
 and suggest simpler examples. -/
 class Shrinkable (α : Type u) extends WellFoundedRelation α where
-  shrink : (x : α) → List α := λ _ => []
+  shrink : (x : α) → List α := fun _ => []
 
 /-- `SampleableExt` can be used in two ways. The first (and most common)
 is to simply generate values of a type directly using the `Gen` monad,
@@ -105,7 +105,8 @@ def mkSelfContained [Repr α] [Shrinkable α] (sample : Gen α) : SampleableExt 
 
 /-- First samples a proxy value and interprets it. Especially useful if
 the proxy and target type are the same. -/
-def interpSample (α : Type u) [SampleableExt α] : Gen α := SampleableExt.interp <$> SampleableExt.sample
+def interpSample (α : Type u) [SampleableExt α] : Gen α :=
+  SampleableExt.interp <$> SampleableExt.sample
 
 end SampleableExt
 
@@ -147,7 +148,7 @@ instance Bool.shrinkable : Shrinkable Bool := {}
 instance Char.shrinkable : Shrinkable Char := {}
 
 instance Prod.shrinkable [shrA : Shrinkable α] [shrB : Shrinkable β] : Shrinkable (Prod α β) where
-  shrink := λ (fst,snd) =>
+  shrink := fun (fst,snd) =>
     let shrink1 := shrA.shrink fst |>.map fun x => (x, snd)
     let shrink2 := shrB.shrink snd |>.map fun x => (fst, x)
     shrink1 ++ shrink2
@@ -174,13 +175,13 @@ instance Bool.sampleableExt : SampleableExt Bool :=
 The resulting instance has `1 / length` chances of making an unrestricted choice of characters
 and it otherwise chooses a character from `chars` with uniform probabilities.  -/
 def Char.sampleable (length : Nat) (chars : Array Char) : SampleableExt Char :=
-    mkSelfContained do
-      let x ←  choose Nat 0 length
-      if x == 0 then
-        let n ←  interpSample Nat
-        pure $ Char.ofNat n
-      else
-        elements chars
+  mkSelfContained do
+    let x ← choose Nat 0 length
+    if x == 0 then
+      let n ← interpSample Nat
+      pure $ Char.ofNat n
+    else
+      elements chars
 
 instance Char.sampleableDefault : SampleableExt Char :=
   Char.sampleable 3
@@ -215,7 +216,7 @@ instance inhabited [inst : Inhabited α] : Inhabited (NoShrink α) := inst
 instance repr [inst : Repr α] : Repr (NoShrink α) := inst
 
 instance shrinkable : Shrinkable (NoShrink α) where
-  shrink := λ _ => []
+  shrink := fun _ => []
 
 instance sampleableExt [SampleableExt α] [Repr α] : SampleableExt (NoShrink α) :=
   SampleableExt.mkSelfContained $ (NoShrink.mk ∘ SampleableExt.interp) <$> SampleableExt.sample
