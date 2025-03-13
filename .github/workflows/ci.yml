@@ -33,4 +33,4 @@ jobs:
         with:
           name: argumentcomputer
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-      - run: nix run .#test
+      - run: nix build
