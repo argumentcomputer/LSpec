@@ -63,7 +63,7 @@ def listOf (x : Gen α) : Gen (List α) :=
 def oneOf [Inhabited α] (xs : Array (Gen α)) : Gen α := do
   let i ← choose Nat 0 (xs.size - 1)
   if h : i < xs.size then
-    xs.get i h
+    xs[i]
   else -- The array is empty
     pure default
 
@@ -71,7 +71,7 @@ def oneOf [Inhabited α] (xs : Array (Gen α)) : Gen α := do
 def elements [Inhabited α] (xs : Array α) : Gen α := do
   let i ← choose Nat 0 (xs.size - 1)
   if h : i < xs.size then
-    return xs.get i h
+    return xs[i]
   else -- The array is empty
     pure default
 
