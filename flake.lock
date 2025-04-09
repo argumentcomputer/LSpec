@@ -44,16 +44,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1744203821,
+        "lastModified": 1744206621,
         "narHash": "sha256-17kctQIIENhliHEQzzM06OlzrF4uyq6w7KOXSeNbZc4=",
         "owner": "argumentcomputer",
         "repo": "lean4-nix",
-        "rev": "16c1589929c11ec7deb6ec18f1200d112deaf106",
+        "rev": "f798c4f818301c3dd3f5ffa1b667f824b72921a4",
         "type": "github"
       },
       "original": {
         "owner": "argumentcomputer",
-        "ref": "lean-4.18.0",
         "repo": "lean4-nix",
         "type": "github"
       }
