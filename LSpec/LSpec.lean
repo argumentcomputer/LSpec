@@ -183,7 +183,7 @@ def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt
   let filteredMap :=
     if args.isEmpty then map
     else Id.run do
-      let mut acc := .empty
+      let mut acc := .emptyWithCapacity args.length
       for arg in args do
         for (key, tSeq) in map do
           if key.startsWith arg then
@@ -191,7 +191,7 @@ def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt
       pure acc
 
   -- Accumulate error messages
-  let mut testsWithErrors : HashMap String (Array String) := .empty
+  let mut testsWithErrors : HashMap String (Array String) := .emptyWithCapacity map.size
   for (key, tSeqs) in filteredMap do
     IO.println key
     for tSeq in tSeqs do
