@@ -66,12 +66,12 @@ def listOf (x : Gen α) : Gen (List α) :=
 /-- Given a list of example generators, choose one to create an example. -/
 def oneOf [Inhabited α] (xs : Array (Gen α)) : Gen α := do
   let x ← chooseNatLt 0 xs.size
-  xs.get! x
+  xs[x]!
 
 /-- Given a list of examples, choose one to create an example. -/
 def elements [Inhabited α] (xs : List α) : Gen α := do
   let x ← chooseNatLt 0 xs.length
-  pure $ xs.get! x
+  pure xs[x]!
 
 open List in
 /-- Generate a random permutation of a given list. -/
