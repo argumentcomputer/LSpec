@@ -1,0 +1,6 @@
+name = "LSpec"
+version = "2.0.0"
+defaultTargets = ["LSpec"]
+
+[[lean_lib]]
+name = "LSpec"
