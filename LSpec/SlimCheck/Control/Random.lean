@@ -33,13 +33,13 @@ namespace SlimCheck
 /-- A monad to generate random objects using the generic generator type `g` -/
 abbrev RandT (g : Type) := StateM (ULift g)
 
-instance inhabitedRandT [Inhabited g] [Inhabited α] : Inhabited (RandT g α) where 
+instance inhabitedRandT [Inhabited g] [Inhabited α] : Inhabited (RandT g α) where
   default := fun _ => pure (default, .up default)
 
 /-- A monad to generate random objects using the generator type `Rng` -/
 abbrev Rand (α : Type u) := RandT StdGen α
 
-instance inhabitedStdGen : Inhabited StdGen where 
+instance inhabitedStdGen : Inhabited StdGen where
   default := mkStdGen
 
 /-- `Random α` gives us machinery to generate values of type `α` -/
@@ -76,36 +76,38 @@ namespace Random
 open Rand
 
 /-- Generate a random value of type `α`. -/
-def rand (α : Type u) [Random α] [range : DefaultRange α] [RandomGen g] : RandT g α := 
+def rand (α : Type u) [Random α] [range : DefaultRange α] [RandomGen g] : RandT g α :=
   Random.randomR range.lo range.hi
 
 /-- Generate a random value of type `α` between `x` and `y` inclusive. -/
 def randBound (α : Type u) [Random α] (lo hi : α) [RandomGen g] : RandT g α :=
   Random.randomR lo hi
 
-def randFin {n : Nat} [RandomGen g] : RandT g (Fin n.succ) :=
-  λ ⟨g⟩ => randNat g 0 n.succ |>.map Fin.ofNat ULift.up
+def randFin {n : Nat} [NeZero n] [RandomGen g] : RandT g (Fin n) :=
+  λ ⟨g⟩ =>
+    let (x, gen) := randNat g 0 n.succ
+    (Fin.ofNat n x, ULift.up gen)
 
 instance : Random Bool where
-  randomR := fun lo hi g => 
+  randomR := fun lo hi g =>
     let (n, g') := RandomGen.next g.down
     match lo, hi with
-    | true, false => (n % 2 == 1, .up g') 
+    | true, false => (n % 2 == 1, .up g')
     | false, true => (n % 2 == 0, .up g') -- this doesn't matter btw, I'm just being quirky
     | x, _ => (x, .up g')
 
 instance : Random Nat where
-  randomR := fun lo hi g => 
-    let (n, g') := randNat g.down lo hi 
+  randomR := fun lo hi g =>
+    let (n, g') := randNat g.down lo hi
     (n, .up g')
 
-instance {n : Nat} : Random (Fin n.succ) where
-  randomR := fun lo hi g => 
-    let (n, g') := randNat g.down lo hi  
-    (.ofNat n, .up g')
+instance {n : Nat} [NeZero n] : Random (Fin n) where
+  randomR := fun lo hi g =>
+    let (x, g') := randNat g.down lo hi
+    (Fin.ofNat n x, .up g')
 
 instance : Random Int where
-  randomR := fun lo hi g => 
+  randomR := fun lo hi g =>
     let lo' := if lo > hi then hi else lo
     let hi' := if lo > hi then lo else hi
     let hi'' := (hi' - lo').toNat

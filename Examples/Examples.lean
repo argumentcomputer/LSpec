@@ -6,7 +6,7 @@ section LSpec
 open LSpec
 
 /- The simplest way to invoke `LSpec` is in a file via the `#lspec` command -/
-#lspec test "Nat equality" (4 ≠ 5) 
+#lspec test "Nat equality" (4 ≠ 5)
 
 /-
 `#lspec` runs a sequence of tests which are encoded with the inductive type `TestSeq` which allows
@@ -18,7 +18,7 @@ for tests to be composable
 
 /-
 Tests that can be tested are of the `Testable` typeclass, which have a low-priority instance
-`(p : Prop) : Decidable p → Testable p` which can be over-ridden to allow for more intricate 
+`(p : Prop) : Decidable p → Testable p` which can be over-ridden to allow for more intricate
 failure or success messages.
 
 This instance is generic enough that tests like `∀ n, n < 10 → n - 5 < 5` can be evaluated
@@ -48,7 +48,7 @@ def main := do
 -- ✓ fiveIO equals 5
 -- 0
 
-/- 
+/-
 There are even more ways to invoke LSpec tests (`lspecEachIO` for example) for more intricate moandic
 testing
  -/
@@ -72,7 +72,7 @@ example : SampleableExt Nat := by infer_instance
        check "mul_comm" $ ∀ n m : Nat, n * m = m * m
 -- ? add_comm
 -- × mul_comm
-    
+
 -- ===================
 -- Found problems!
 -- n := 1
@@ -95,7 +95,7 @@ private def mkPairs (as : List α) (bs : List β) : List (α × β) :=
 /- An instance of `Shrinkable` is needed -/
 open Shrinkable in
 instance : Shrinkable Pairs where
-  shrink := fun p => 
+  shrink := fun p =>
     let shrinkl := shrink p.left
     let shrinkr := shrink p.right
     mkPairs shrinkl shrinkr |>.map fun (a, b) => ⟨a, b⟩
@@ -103,14 +103,14 @@ instance : Shrinkable Pairs where
 /-
 As is one for `SampleableExt`.
 
-In both of these cases we are using the instances already written for more primitive types like 
+In both of these cases we are using the instances already written for more primitive types like
 `Nat`, but it's possible to write a these instances by hand if we want more fine-grained behavior.
 -/
 open SampleableExt
 
 def pairsGen : Gen Pairs := return ⟨← Gen.chooseAny Nat, ← Gen.chooseAny Nat⟩
 
-/- 
+/-
 To generate the instance of `SampleableExt α` we use the `mkSelfContained` function which relies only
 on having a `Gen α`.
 
@@ -121,11 +121,11 @@ instance : SampleableExt Pairs := mkSelfContained pairsGen
 /- Now we can conduct the tests just as we did before for `Nat` -/
 #lspec check "left + 2 is less than right" $ ∀ pair : Pairs, pair.left + 2 ≤ pair.right
 
-/- 
-You always have to be careful with your implementation for `shrink` and `SampleableExt` because 
+/-
+You always have to be careful with your implementation for `shrink` and `SampleableExt` because
 Slimcheck may not flag tests that should fail, in this case `⟨0, 0⟩` should fail the test but
 isn't detected
 -/
-#lspec check "left + right > right" $ ∀ pair : Pairs, pair.left + pair.right > pair.right 
+#lspec check "left + right > right" $ ∀ pair : Pairs, pair.left + pair.right > pair.right
 
 end SlimCheck
