@@ -4,10 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    lean4-nix = {
-      url = "github:argumentcomputer/lean4-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    lean4-nix.url = "github:lenianiva/lean4-nix";
   };
 
   outputs = inputs @ {
