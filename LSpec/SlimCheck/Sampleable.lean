@@ -126,7 +126,7 @@ instance Nat.shrinkable : Shrinkable Nat where
   shrink := Nat.shrink
 
 /-- `Fin.shrink` works like `Nat.shrink` but instead operates on `Fin`. -/
-partial def Fin.shrink {n : Nat} (m : Fin n.succ) : List (Fin n.succ) :=
+partial def Fin.shrink {n : Nat} [NeZero n] (m : Fin n) : List (Fin n) :=
   if 0 < m then
     let m := m / 2
     let rest := shrink m
@@ -134,7 +134,7 @@ partial def Fin.shrink {n : Nat} (m : Fin n.succ) : List (Fin n.succ) :=
   else
     []
 
-instance Fin.shrinkable {n : Nat} : Shrinkable (Fin n.succ) where
+instance Fin.shrinkable {n : Nat} [NeZero n] : Shrinkable (Fin n) where
   shrink := Fin.shrink
 
 local instance Int_sizeOfAbs : SizeOf Int := ⟨Int.natAbs⟩
@@ -162,8 +162,8 @@ open Gen SampleableExt
 instance Nat.sampleableExt : SampleableExt Nat :=
   mkSelfContained (do choose Nat 0 (← getSize))
 
-instance Fin.sampleableExt {n : Nat} : SampleableExt (Fin (n.succ)) :=
-  mkSelfContained (do choose (Fin n.succ) (Fin.ofNat' _ 0) (Fin.ofNat' _ (← getSize)))
+instance Fin.sampleableExt {n : Nat} [NeZero n] : SampleableExt (Fin n) :=
+  mkSelfContained (do choose (Fin n) (Fin.ofNat n 0) (Fin.ofNat n (← getSize)))
 
 instance Int.sampleableExt : SampleableExt Int :=
   mkSelfContained (do choose Int (-(← getSize)) (← getSize))

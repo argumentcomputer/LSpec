@@ -83,8 +83,10 @@ def rand (α : Type u) [Random α] [range : DefaultRange α] [RandomGen g] : Ran
 def randBound (α : Type u) [Random α] (lo hi : α) [RandomGen g] : RandT g α :=
   Random.randomR lo hi
 
-def randFin {n : Nat} [RandomGen g] : RandT g (Fin n.succ) :=
-  λ ⟨g⟩ => randNat g 0 n.succ |>.map (Fin.ofNat' _) ULift.up
+def randFin {n : Nat} [NeZero n] [RandomGen g] : RandT g (Fin n) :=
+  λ ⟨g⟩ =>
+    let (x, gen) := randNat g 0 n.succ
+    (Fin.ofNat n x, ULift.up gen)
 
 instance : Random Bool where
   randomR := fun lo hi g =>
@@ -99,10 +101,10 @@ instance : Random Nat where
     let (n, g') := randNat g.down lo hi
     (n, .up g')
 
-instance {n : Nat} : Random (Fin n.succ) where
+instance {n : Nat} [NeZero n] : Random (Fin n) where
   randomR := fun lo hi g =>
-    let (n, g') := randNat g.down lo hi
-    (.ofNat' _ n, .up g')
+    let (x, g') := randNat g.down lo hi
+    (Fin.ofNat n x, .up g')
 
 instance : Random Int where
   randomR := fun lo hi g =>

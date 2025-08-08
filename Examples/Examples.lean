@@ -26,6 +26,29 @@ This instance is generic enough that tests like `∀ n, n < 10 → n - 5 < 5` ca
 #lspec test "all lt" $ ∀ n, n < 10 → n - 5 < 5
 
 /-
+It is also possible to run tests inside the `IO` monad. The purpose of these tests is to plug in
+`LSpec` into a testing script for a `lake script`
+-/
+
+def fourIO : IO Nat :=
+  return 4
+
+def fiveIO : IO Nat :=
+  return 5
+
+def main := do
+  let four ← fourIO
+  let five ← fiveIO
+  lspecIO $
+    test "fourIO equals 4" (four = 4) $
+    test "fiveIO equals 5" (five = 5)
+
+#eval main
+-- ✓ fourIO equals 4
+-- ✓ fiveIO equals 5
+-- 0
+
+/-
 There are even more ways to invoke LSpec tests (`lspecEachIO` for example) for more intricate moandic
 testing
  -/
