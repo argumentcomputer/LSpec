@@ -2,7 +2,7 @@ name: CI Tests
 
 on:
   push:
-    branches: [main, 61-lean4-nix]
+    branches: main
   pull_request:
   workflow_dispatch:
 
