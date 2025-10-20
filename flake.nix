@@ -1,15 +1,6 @@
 {
   description = "LSpec Nix Flake";
 
-  nixConfig = {
-    extra-substituters = [
-      "https://cache.garnix.io"
-    ];
-    extra-trusted-public-keys = [
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-    ];
-  };
-
   inputs = {
     nixpkgs.follows = "lean4-nix/nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -36,22 +27,22 @@
         self',
         config,
         ...
-      }:
-      {
+      }: {
         _module.args.pkgs = import nixpkgs {
           inherit system;
           overlays = [(lean4-nix.readToolchainFile ./lean-toolchain)];
         };
 
         # Build the library with `nix build`
-        packages.default = ((lean4-nix.lake {inherit pkgs;}).mkPackage {
+        packages.default =
+          ((lean4-nix.lake {inherit pkgs;}).mkPackage {
             src = ./.;
             roots = ["LSpec"];
-        }).modRoot;
+          }).modRoot;
 
         devShells.default = pkgs.mkShell {
-          packages = with pkgs.lean; [lean lean-all];
+          packages = with pkgs.lean; [lean];
         };
+      };
     };
-  };
 }
