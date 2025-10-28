@@ -41,7 +41,7 @@
           }).modRoot;
 
         devShells.default = pkgs.mkShell {
-          packages = with pkgs.lean; [lean];
+          packages = with pkgs.lean; [lean-all];
         };
       };
     };
