@@ -129,7 +129,7 @@ def withExceptError (descr : String) (exc : Except ε α) [ToString α]
 
 /-- A generic runner for `TestSeq` -/
 def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
-  let pad := String.mk $ List.replicate indent ' '
+  let pad := String.ofList $ List.replicate indent ' '
   let rec aux (acc : String) : TestSeq → Bool × String
     | .done => (true, acc)
     | .group d ts n =>

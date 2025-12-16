@@ -56,7 +56,7 @@ instance Nat.Testable_forall_lt
           | none     => s!"Fails on input {b}."
       | .isFailure msg => .isFailure msg
     | .isMaybe msg => .isMaybe msg
-    | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_step hn)) msg
+    | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_succ_of_le hn)) msg
     | .isFailure msg => .isFailure msg
 
 end LSpec
