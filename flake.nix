@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.follows = "lean4-nix/nixpkgs";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    lean4-nix.url = "github:lenianiva/lean4-nix/manifest/v4.26.0";
+    lean4-nix.url = "github:lenianiva/lean4-nix";
   };
 
   outputs = inputs @ {
@@ -26,7 +26,6 @@
         pkgs,
         self',
         config,
-        lib,
         ...
       }: let lake2nix = pkgs.callPackage lean4-nix.lake {};
         in {
@@ -40,7 +39,6 @@
           lake2nix.mkPackage {
             name = "LSpec";
             src = ./.;
-            roots = ["LSpec"];
           };
 
         devShells.default = pkgs.mkShell {
