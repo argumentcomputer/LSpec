@@ -67,6 +67,31 @@ def oneOf [Inhabited α] (xs : Array (Gen α)) : Gen α := do
   else -- The array is empty
     pure default
 
+/-- Choose from generators with weighted probability.
+    Each pair is (weight, generator). Higher weights are more likely to be chosen.
+
+    Example:
+    ```
+    Gen.frequency #[(1, pure 0), (9, choose Nat 1 100)] (pure 0)  -- 10% zeros, 90% 1-100
+    ```
+-/
+def frequency (weighted : Array (Nat × Gen α)) (fallback : Gen α) : Gen α := do
+  if weighted.isEmpty then
+    fallback
+  else
+    let totalWeight := weighted.foldl (fun acc (w, _) => acc + w) 0
+    if totalWeight == 0 then
+      fallback
+    else
+      let choice ← choose Nat 0 (totalWeight - 1)
+      let mut cumulative := 0
+      for (weight, gen) in weighted do
+        cumulative := cumulative + weight
+        if choice < cumulative then
+          return ← gen
+      -- Fallback (should not reach here)
+      fallback
+
 /-- Given an array of examples, choose one. -/
 def elements [Inhabited α] (xs : Array α) : Gen α := do
   let i ← choose Nat 0 (xs.size - 1)

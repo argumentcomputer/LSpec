@@ -128,4 +128,68 @@ isn't detected
 -/
 #lspec check "left + right > right" $ ∀ pair : Pairs, pair.left + pair.right > pair.right
 
+/-
+## Gen.frequency - Weighted Random Generation
+
+`Gen.frequency` allows you to choose from generators with weighted probability.
+This is useful when you want certain values to appear more often than others.
+-/
+
+/-- A simple command type for testing -/
+inductive Command where
+  | noop
+  | read
+  | write
+  | delete
+deriving Repr, DecidableEq
+
+/--
+Using `Gen.frequency` to create weighted random commands:
+- noop: 10% chance
+- read: 50% chance
+- write: 30% chance
+- delete: 10% chance
+-/
+def commandGen : Gen Command :=
+  Gen.frequency #[
+    (1, pure Command.noop),
+    (5, pure Command.read),
+    (3, pure Command.write),
+    (1, pure Command.delete)
+  ] (pure Command.noop)
+
+instance : Shrinkable Command where
+  shrink := fun _ => []
+
+instance : SampleableExt Command := mkSelfContained commandGen
+
+-- Test that our generator produces valid commands (trivially true, but demonstrates usage)
+#lspec check "commands are valid" $ ∀ cmd : Command,
+  cmd = Command.noop ∨ cmd = Command.read ∨ cmd = Command.write ∨ cmd = Command.delete
+
+/-
+Another example: generating numbers biased toward smaller values
+-/
+
+/-- Generate numbers biased toward smaller values -/
+def biasedSmallGen : Gen Nat :=
+  Gen.frequency #[
+    (5, Gen.choose Nat 0 10),     -- 50% chance: small numbers (0-10)
+    (3, Gen.choose Nat 11 100),   -- 30% chance: medium numbers (11-100)
+    (2, Gen.choose Nat 101 1000)  -- 20% chance: larger numbers (101-1000)
+  ] (pure 0)
+
+/-- A wrapper type to use our biased generator -/
+structure BiasedNat where
+  val : Nat
+deriving Repr
+
+instance : Shrinkable BiasedNat where
+  shrink := fun n => (Shrinkable.shrink n.val).map BiasedNat.mk
+
+instance : SampleableExt BiasedNat := mkSelfContained (BiasedNat.mk <$> biasedSmallGen)
+
+-- Test with biased small numbers
+#lspec check "biased numbers are bounded" $ ∀ n : BiasedNat, n.val ≤ 1000
+
 end SlimCheck

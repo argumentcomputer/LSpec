@@ -135,6 +135,16 @@ def group (descr : String) (groupTests : TestSeq)
     (next : TestSeq := .done) : TestSeq :=
   .group descr groupTests next
 
+/-- Alias for `group`. Groups related tests under a descriptive label.
+    Use for describing a component or function being tested. -/
+def describe (descr : String) (groupTests : TestSeq) (next : TestSeq := .done) : TestSeq :=
+  group descr groupTests next
+
+/-- Alias for `group`. Groups related tests under a contextual label.
+    Use for describing circumstances under which tests run. -/
+def context (descr : String) (groupTests : TestSeq) (next : TestSeq := .done) : TestSeq :=
+  group descr groupTests next
+
 open SlimCheck Decorations in
 /--
 Property-based test evaluated at **compile time**.

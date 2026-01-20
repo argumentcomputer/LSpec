@@ -29,6 +29,53 @@ def tGroup : TestSeq := group "test group test" $
   tGroup
   )
 
+-- Testing describe/context aliases (hspec-style grouping)
+section describe_context_tests
+
+/-- Using `describe` for component-level organization -/
+def parserTests : TestSeq :=
+  describe "Parser" $
+    context "when parsing numbers" $
+      test "parses single digits" (true) $
+      test "parses multi-digit numbers" (true) $
+    context "when parsing strings" $
+      test "handles empty strings" (true) $
+      test "handles quoted strings" (true)
+
+#lspec parserTests
+-- Parser:
+--   when parsing numbers:
+--     ✓ parses single digits
+--     ✓ parses multi-digit numbers
+--   when parsing strings:
+--     ✓ handles empty strings
+--     ✓ handles quoted strings
+
+/-- Nested describe/context blocks -/
+def mathTests : TestSeq :=
+  describe "Math operations" $
+    describe "Addition" $
+      test "0 + n = n" (0 + 5 = 5) $
+      test "commutativity" (3 + 4 = 4 + 3) $
+    describe "Multiplication" $
+      test "0 * n = 0" (0 * 5 = 0) $
+      test "1 * n = n" (1 * 5 = 5)
+
+#lspec mathTests
+
+/-- Mixing describe, context, and group -/
+def mixedGrouping : TestSeq :=
+  describe "List operations" $
+    context "with empty list" $
+      test "length is 0" (([] : List Nat).length = 0) $
+      test "isEmpty is true" (([] : List Nat).isEmpty) $
+    group "non-empty list tests" $
+      test "length is positive" ([1,2,3].length > 0)
+
+#lspec mixedGrouping
+
+end describe_context_tests
+
 /--
 Testing using `#lspec` with something of type `LSpec`.
 -/
