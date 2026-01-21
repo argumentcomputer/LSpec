@@ -4,13 +4,40 @@ import LSpec.SlimCheck.Checkable
 /-!
 # The core `LSpec` framework
 
-## Add all relavent documentation
+A lightweight testing framework for Lean 4, inspired by Hspec.
 
-Check [here](./LSpec/Examples.lean) for examples of uses
+## Overview
 
-## Tags
+LSpec provides three main ways to define tests:
 
-testing frameworks
+- **`test`**: For simple decidable propositions evaluated at compile time
+- **`check`**: For property-based tests using SlimCheck, evaluated at compile time
+- **`checkIO`**: For property-based tests evaluated at runtime with configurable random seeds
+
+## Quick Start
+
+```lean
+import LSpec
+
+-- Simple compile-time tests using #lspec
+#lspec test "basic arithmetic" (2 + 2 = 4)
+#lspec check "addition is commutative" (∀ n m : Nat, n + m = m + n)
+
+-- Runtime tests via main function
+def myTests : TestSeq :=
+  test "equality" (1 = 1) $
+  checkIO "commutativity" (∀ n m : Nat, n + m = m + n)
+
+def main : IO UInt32 := lspecIO (.ofList [("myTests", [myTests])]) []
+```
+
+## Test Evaluation
+
+| Function  | Evaluation | Random Seed   | Use Case                          |
+|-----------|------------|---------------|-----------------------------------|
+| `test`    | Compile    | N/A           | Simple decidable propositions     |
+| `check`   | Compile    | Fixed default | Deterministic property tests      |
+| `checkIO` | Runtime    | Configurable  | Reproducible property tests       |
 
 ## References
 
@@ -22,10 +49,17 @@ namespace LSpec
 /--
 The main typeclass of propositions that can be tested by `LSpec`.
 
-In non-succeeding cases, it may contain an explanatory message.
+| Constructor | Symbol | Meaning |
+|-------------|--------|---------|
+| `isTrue`    | `✓`    | Passed with formal proof |
+| `isPassed`  | `✓*`   | Passed without formal proof (e.g., property test passed all samples) |
+| `isMaybe`   | `?`    | Inconclusive |
+| `isFalse`   | `×`    | Failed with formal refutation |
+| `isFailure` | `×`    | Failed without formal refutation |
 -/
 class inductive Testable (p : Prop) where
   | isTrue  (h : p)
+  | isPassed (msg : Option String := none)
   | isMaybe (msg : Option String := none)
   | isFalse (h : ¬ p) (msg : Option String := none)
   | isFailure (msg : Option String := none)
@@ -41,7 +75,7 @@ instance instTestableOfCheckable (p : Prop) (cfg : Configuration) [Checkable p] 
   let (res, _) := ReaderT.run (Checkable.runSuite p cfg) (.up mkStdGen)
   match res with
   | .success (.inr h) => .isTrue h
-  | .success (.inl _) => .isMaybe
+  | .success (.inl _) => .isPassed
   | .gaveUp n => .isFailure s!"Gave up {n} times"
   | .failure h xs n => .isFalse h $ Checkable.formatFailure "Found problems!" xs n
 
@@ -53,12 +87,28 @@ def formatErrorMsg : Option String → String
 section TestSequences
 
 /--
-  The datatype used to represent a sequence of tests.
-  The `group` constructor represents a purely decorative concept
-  of a test group, allowing to print tests results more prettily.
+A sequence of tests to be executed.
+
+Constructors:
+- `individual`: A compile-time test with a description, proposition, and proof of testability
+- `individualIO`: A deferred IO test that runs at execution time (used by `checkIO`)
+- `group`: A named group of tests for organized output
+- `done`: Marks the end of a test sequence
+
+Tests can be chained using the `next` parameter or appended with `++`:
+```lean
+def tests : TestSeq :=
+  test "first" (1 = 1) $
+  test "second" (2 = 2)
+
+-- Equivalent using append
+def tests' : TestSeq :=
+  test "first" (1 = 1) ++ test "second" (2 = 2)
+```
 -/
 inductive TestSeq
   | individual : String → (prop : Prop) → Testable prop → TestSeq → TestSeq
+  | individualIO : String → IO (Bool × Option String) → TestSeq → TestSeq
   | group : String → TestSeq → TestSeq → TestSeq
   | done
 
@@ -66,6 +116,7 @@ inductive TestSeq
 def TestSeq.append : TestSeq → TestSeq → TestSeq
   | done, t => t
   | individual d p i n, t' => individual d p i $ n.append t'
+  | individualIO d action n, t' => individualIO d action $ n.append t'
   | group d ts n, t' => group d ts $ n.append t'
 
 instance : Append TestSeq where
@@ -84,15 +135,81 @@ def group (descr : String) (groupTests : TestSeq)
     (next : TestSeq := .done) : TestSeq :=
   .group descr groupTests next
 
+/-- Alias for `group`. Groups related tests under a descriptive label.
+    Use for describing a component or function being tested. -/
+def describe (descr : String) (groupTests : TestSeq) (next : TestSeq := .done) : TestSeq :=
+  group descr groupTests next
+
+/-- Alias for `group`. Groups related tests under a contextual label.
+    Use for describing circumstances under which tests run. -/
+def context (descr : String) (groupTests : TestSeq) (next : TestSeq := .done) : TestSeq :=
+  group descr groupTests next
+
 open SlimCheck Decorations in
 /--
-Checks a `Checkable` prop. Note that `mk_decorations` is here simply to improve error messages
-and if `p` is Checkable, then so is `p'`.
+Property-based test evaluated at **compile time**.
+
+Uses SlimCheck to generate random test cases and check the property. The test runs
+during elaboration with a fixed random seed (`mkStdGen`), making results deterministic
+across compilations.
+
+- `descr`: Description shown in test output
+- `p`: The property to check (e.g., `∀ n m : Nat, n + m = m + n`)
+- `next`: Next test in the sequence (default: `.done`)
+- `cfg`: SlimCheck configuration (number of tests, etc.)
+
+```lean
+#lspec check "addition commutes" (∀ n m : Nat, n + m = m + n)
+#lspec check "with config" (∀ n : Nat, n + 0 = n) .done { numInst := 50 }
+```
+
+For runtime evaluation with configurable seeds, use `checkIO` instead.
 -/
 def check (descr : String) (p : Prop) (next : TestSeq := .done) (cfg : Configuration := {})
     (p' : DecorationsOf p := by mk_decorations) [Checkable p'] : TestSeq :=
   haveI : Testable p' := instTestableOfCheckable p' cfg
   test descr p' next
+
+open SlimCheck Decorations in
+/--
+Property-based test evaluated at **runtime**.
+
+Unlike `check`, which runs during compilation, `checkIO` defers test execution until
+the test suite is run. This enables:
+- Configurable random seeds via `cfg.randomSeed` for reproducible test runs
+- Different random values on each execution (when no seed is specified)
+- Integration with CI systems that may want deterministic test runs
+
+- `descr`: Description shown in test output
+- `p`: The property to check (e.g., `∀ n m : Nat, n + m = m + n`)
+- `next`: Next test in the sequence (default: `.done`)
+- `cfg`: SlimCheck configuration including optional `randomSeed`
+
+```lean
+-- Runtime test with random seed (different each run)
+def tests : TestSeq :=
+  checkIO "addition commutes" (∀ n m : Nat, n + m = m + n)
+
+-- Reproducible test with fixed seed
+def reproducible : TestSeq :=
+  checkIO "deterministic" (∀ n : Nat, n * 1 = n) .done { randomSeed := some 42 }
+
+-- Run via main
+def main : IO UInt32 := lspecIO (.ofList [("tests", [tests])]) []
+```
+
+Note: `checkIO` tests are skipped when run via `#lspec` (which uses the pure runner).
+Use `lspecIO` or `lspecEachIO` to execute them.
+-/
+def checkIO (descr : String) (p : Prop) (next : TestSeq := .done) (cfg : Configuration := {})
+    (p' : DecorationsOf p := by mk_decorations) [Checkable p'] : TestSeq :=
+  let action : IO (Bool × Option String) := do
+    let result ← Checkable.checkIO p' cfg
+    match result with
+    | .success _ => pure (true, none)
+    | .gaveUp n => pure (false, some s!"Gave up {n} times")
+    | .failure _ xs n => pure (false, some $ Checkable.formatFailure "Found problems!" xs n)
+  .individualIO descr action next
 
 inductive ExpectationFailure (exp got : String) : Prop
 
@@ -127,7 +244,15 @@ def withExceptError (descr : String) (exc : Except ε α) [ToString α]
   | .error e => test descr true $ f e
   | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
 
-/-- A generic runner for `TestSeq` -/
+/--
+Pure runner for `TestSeq`. Returns `(success, output)` where `success` is `true`
+if all tests passed.
+
+This runner executes `individual` tests but **skips** `individualIO` tests (marking them
+with "?"). Used by `#lspec` for compile-time test execution.
+
+For runtime tests including `checkIO`, use `TestSeq.runIO` instead.
+-/
 def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
   let pad := String.ofList $ List.replicate indent ' '
   let rec aux (acc : String) : TestSeq → Bool × String
@@ -137,12 +262,49 @@ def TestSeq.run (tSeq : TestSeq) (indent := 0) : Bool × String :=
       let (b, m) := aux s!"{acc}{pad}{d}:\n{msg}" n
       (pass && b, m)
     | .individual d _ (.isTrue _) n => aux s!"{acc}{pad}✓ {d}\n" n
-    | .individual d _ (.isMaybe   msg) n =>
+    | .individual d _ (.isPassed _) n => aux s!"{acc}{pad}✓* {d}\n" n
+    | .individual d _ (.isMaybe msg) n =>
       aux s!"{acc}{pad}? {d}{formatErrorMsg msg}\n" n
     | .individual d _ (.isFalse _ msg) n
     | .individual d _ (.isFailure msg) n =>
       let (_b, m) := aux s!"{acc}{pad}× {d}{formatErrorMsg msg}\n" n
       (false, m)
+    | .individualIO d _ n =>
+      aux s!"{acc}{pad}? {d} (IO test skipped in pure runner)\n" n
+  aux "" tSeq
+
+/--
+IO runner for `TestSeq`. Returns `(success, output)` where `success` is `true`
+if all tests passed.
+
+Unlike `TestSeq.run`, this runner executes both `individual` and `individualIO` tests,
+making it suitable for running `checkIO` property tests at runtime.
+
+Used by `lspecIO` and `lspecEachIO` for runtime test execution.
+-/
+def TestSeq.runIO (tSeq : TestSeq) (indent := 0) : IO (Bool × String) := do
+  let pad := String.ofList $ List.replicate indent ' '
+  let rec aux (acc : String) : TestSeq → IO (Bool × String)
+    | .done => pure (true, acc)
+    | .group d ts n => do
+      let (pass, msg) ← ts.runIO (indent + 2)
+      let (b, m) ← aux s!"{acc}{pad}{d}:\n{msg}" n
+      pure (pass && b, m)
+    | .individual d _ (.isTrue _) n => aux s!"{acc}{pad}✓ {d}\n" n
+    | .individual d _ (.isPassed _) n => aux s!"{acc}{pad}✓* {d}\n" n
+    | .individual d _ (.isMaybe msg) n =>
+      aux s!"{acc}{pad}? {d}{formatErrorMsg msg}\n" n
+    | .individual d _ (.isFalse _ msg) n
+    | .individual d _ (.isFailure msg) n => do
+      let (_b, m) ← aux s!"{acc}{pad}× {d}{formatErrorMsg msg}\n" n
+      pure (false, m)
+    | .individualIO d action n => do
+      let (success, msgOpt) ← action
+      if success then
+        aux s!"{acc}{pad}✓ {d}\n" n
+      else
+        let (_b, m) ← aux s!"{acc}{pad}× {d}{formatErrorMsg msgOpt}\n" n
+        pure (false, m)
   aux "" tSeq
 
 end TestSequences
@@ -169,14 +331,31 @@ macro "#lspec " term:term : command =>
 
 open Std (HashMap) in
 /--
-Consumes a map of string-keyed test suites and returns a test function meant to
-be used via CLI.
+Runs test suites from a CLI-style main function. Returns `0` on success, `1` on failure.
 
-The arguments `args` are matched against the test suite keys. If a key starts
-with one of the elements in `args`, then its respective test suite will be
-marked to run.
+- `map`: A map from suite names to lists of `TestSeq`
+- `args`: Command-line arguments to filter which suites run
 
-If the empty list is provided, all test suites will run.
+If `args` is empty, all suites run. Otherwise, only suites whose names start with
+one of the arguments will run.
+
+Supports both `test`/`check` (compile-time) and `checkIO` (runtime) tests.
+
+```lean
+def mathTests : TestSeq :=
+  test "addition" (1 + 1 = 2) $
+  checkIO "commutativity" (∀ n m : Nat, n + m = m + n)
+
+def stringTests : TestSeq :=
+  test "concat" ("a" ++ "b" = "ab")
+
+def main (args : List String) : IO UInt32 :=
+  lspecIO (.ofList [("math", [mathTests]), ("string", [stringTests])]) args
+
+-- Run all tests:     ./test
+-- Run math only:     ./test math
+-- Run string only:   ./test string
+```
 -/
 def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt32 := do
   -- Compute the filtered map containing the test suites to run
@@ -195,7 +374,7 @@ def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt
   for (key, tSeqs) in filteredMap do
     IO.println key
     for tSeq in tSeqs do
-      let (success, msg) := tSeq.run (indent := 2)
+      let (success, msg) ← tSeq.runIO (indent := 2)
       if success then IO.println msg
       else
         IO.eprintln msg
@@ -216,16 +395,25 @@ def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt
   return 1
 
 /--
-Runs a sequence of tests that are created from a `List α` and a function
-`α → IO TestSeq`. Instead of creating all tests and running them consecutively,
-this function alternates between test creation and test execution.
+Runs tests lazily from a list, alternating between test creation and execution.
+Returns `0` on success, `1` on failure.
 
-It's useful when the test creation process involves heavy computations in `IO`
-(e.g. when `f` reads data from files and processes it).
+Unlike `lspecIO` which builds all test suites upfront, this function creates and runs
+tests one at a time. Useful when test creation involves expensive IO operations
+(e.g., reading files, network calls).
+
+Supports both `test`/`check` (compile-time) and `checkIO` (runtime) tests.
+
+```lean
+def main : IO UInt32 :=
+  lspecEachIO ["file1.json", "file2.json"] fun path => do
+    let contents ← IO.FS.readFile path
+    pure $ test s!"{path} is valid" (contents.length > 0)
+```
 -/
 def lspecEachIO (l : List α) (f : α → IO TestSeq) : IO UInt32 := do
   let success ← l.foldlM (init := true) fun acc a => do
-    match (← f a).run with
+    match ← (← f a).runIO with
     | (true, msg) => IO.println msg; pure acc
     | (false, msg) => IO.eprintln msg; pure false
   if success then return 0 else return 1

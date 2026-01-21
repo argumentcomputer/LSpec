@@ -48,6 +48,7 @@ instance Nat.Testable_forall_lt
           cases Nat.eq_or_lt_of_le (Nat.le_of_lt_succ hn) with
           | inl hl => cases hl; assumption
           | inr => apply h; assumption
+      | .isPassed msg => .isPassed msg
       | .isMaybe msg => .isMaybe msg
       | .isFalse hb msg =>
         .isFalse (λ h => hb (h _ (Nat.lt_succ_self _))) $
@@ -55,6 +56,7 @@ instance Nat.Testable_forall_lt
           | some msg => s!"Fails on input {b}. {msg}"
           | none     => s!"Fails on input {b}."
       | .isFailure msg => .isFailure msg
+    | .isPassed msg => .isPassed msg
     | .isMaybe msg => .isMaybe msg
     | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_succ_of_le hn)) msg
     | .isFailure msg => .isFailure msg
