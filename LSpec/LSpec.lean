@@ -317,46 +317,6 @@ def withExceptError (descr : String) (exc : Except ε α) [ToString α]
   | .error e => test descr true $ f e
   | .ok    a => test descr (ExpectationFailure "error _" s!"ok {a}")
 
-/-- Convert a digit (0-9) to its Unicode subscript character -/
-def digitToSubscript (d : Nat) : Char :=
-  match d with
-  | 0 => '₀' | 1 => '₁' | 2 => '₂' | 3 => '₃' | 4 => '₄'
-  | 5 => '₅' | 6 => '₆' | 7 => '₇' | 8 => '₈' | _ => '₉'
-
-/-- Convert a digit (0-9) to its Unicode superscript character -/
-def digitToSuperscript (d : Nat) : Char :=
-  match d with
-  | 0 => '⁰' | 1 => '¹' | 2 => '²' | 3 => '³' | 4 => '⁴'
-  | 5 => '⁵' | 6 => '⁶' | 7 => '⁷' | 8 => '⁸' | _ => '⁹'
-
-/-- Convert a natural number to subscript Unicode string (e.g., 100 → "₁₀₀") -/
-def natToSubscript (n : Nat) : String :=
-  if n == 0 then "₀"
-  else
-    let rec go (n : Nat) (acc : List Char) : List Char :=
-      if h : n == 0 then acc
-      else go (n / 10) (digitToSubscript (n % 10) :: acc)
-    termination_by n
-    decreasing_by
-      simp_wf
-      have : n ≠ 0 := by simp_all
-      exact Nat.div_lt_self (Nat.pos_of_ne_zero this) (by omega)
-    String.ofList (go n [])
-
-/-- Convert a natural number to superscript Unicode string (e.g., 47 → "⁴⁷") -/
-def natToSuperscript (n : Nat) : String :=
-  if n == 0 then "⁰"
-  else
-    let rec go (n : Nat) (acc : List Char) : List Char :=
-      if h : n == 0 then acc
-      else go (n / 10) (digitToSuperscript (n % 10) :: acc)
-    termination_by n
-    decreasing_by
-      simp_wf
-      have : n ≠ 0 := by simp_all
-      exact Nat.div_lt_self (Nat.pos_of_ne_zero this) (by omega)
-    String.ofList (go n [])
-
 /--
 Format test output line for successful tests.
 
@@ -377,7 +337,7 @@ def formatSuccessLine (descr : String) (propString : Option String)
       s!"∀: \"{descr}\" {ps}"
     else
       -- Existential (sampled): ✓ ∃ₙ: "descr" propStr
-      s!"∃{natToSubscript numSamples}: \"{descr}\" {ps}"
+      s!"∃{numSamples.toSubscriptString}: \"{descr}\" {ps}"
   | none =>
     -- Unit test: ✓ ∃: descr
     s!"∃: {descr}"
@@ -398,7 +358,7 @@ def formatFailureLine (descr : String) (propString : Option String)
   | some ps =>
     -- Property test failure: × ∃ⁿ/ₘ: "descr" propStr
     if totalTests > 0 then
-      s!"∃{natToSuperscript failedAt}/{natToSubscript totalTests}: \"{descr}\" {ps}"
+      s!"∃{failedAt.toSuperscriptString}/{totalTests.toSubscriptString}: \"{descr}\" {ps}"
     else
       s!"∃: \"{descr}\" {ps}"
   | none =>
