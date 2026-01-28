@@ -420,10 +420,11 @@ def giveUp (x : Nat) : TestResult p → TestResult p
   | gaveUp n => gaveUp $ n + x
   | TestResult.failure h xs n => failure h xs n
 
-/-- Try `n` times to find a counter-example for `p`. -/
-def Checkable.runSuiteAux (p : Prop) [Checkable p] (cfg : Configuration) (r : TestResult p) :
-    Nat → Rand (TestResult p)
-  | 0 => pure r
+/-- Try `n` times to find a counter-example for `p`.
+Returns a tuple of (result, numSuccessfulSamples). -/
+def Checkable.runSuiteAux (p : Prop) [Checkable p] (cfg : Configuration) (r : TestResult p)
+    (successCount : Nat) : Nat → Rand (TestResult p × Nat)
+  | 0 => pure (r, successCount)
   | n + 1 => do
     let size := (cfg.numInst - n - 1) * cfg.maxSize / cfg.numInst
     if cfg.traceSuccesses then
@@ -431,16 +432,20 @@ def Checkable.runSuiteAux (p : Prop) [Checkable p] (cfg : Configuration) (r : Te
       slimTrace s!"Retrying up to {cfg.numRetries} times until guards hold"
     let x ← retry (ReaderT.run (Checkable.runProp p cfg true) ⟨size⟩) cfg.numRetries
     match x with
-    | (success (PSum.inl ())) => runSuiteAux p cfg r n
-    | (gaveUp g) => runSuiteAux p cfg (giveUp g r) n
-    | _ => pure $ x
+    | (success (PSum.inl ())) => runSuiteAux p cfg r (successCount + 1) n
+    | (gaveUp g) => runSuiteAux p cfg (giveUp g r) successCount n
+    | _ => pure (x, successCount)
 
-/-- Try to find a counter-example of `p`. -/
-def Checkable.runSuite (p : Prop) [Checkable p] (cfg : Configuration := {}) : Rand (TestResult p) :=
-  Checkable.runSuiteAux p cfg (success $ PSum.inl ()) cfg.numInst
+/-- Try to find a counter-example of `p`.
+Returns a tuple of (result, numSuccessfulSamples). -/
+def Checkable.runSuite (p : Prop) [Checkable p] (cfg : Configuration := {})
+    : Rand (TestResult p × Nat) :=
+  Checkable.runSuiteAux p cfg (success $ PSum.inl ()) 0 cfg.numInst
 
-/-- Run a test suite for `p` in `BaseIO` using the global RNG in `stdGenRef`. -/
-def Checkable.checkIO (p : Prop) [Checkable p] (cfg : Configuration := {}) : BaseIO (TestResult p) :=
+/-- Run a test suite for `p` in `BaseIO` using the global RNG in `stdGenRef`.
+Returns a tuple of (result, numSuccessfulSamples). -/
+def Checkable.checkIO (p : Prop) [Checkable p] (cfg : Configuration := {})
+    : BaseIO (TestResult p × Nat) :=
   match cfg.randomSeed with
   | none => IO.runRand (Checkable.runSuite p cfg)
   | some seed => IO.runRandWith seed (Checkable.runSuite p cfg)
@@ -490,8 +495,10 @@ open Decorations in
 /-- Run a test suite for `p` and throw an exception if `p` does not not hold.-/
 def Checkable.check (p : Prop) (cfg : Configuration := {})
     (p' : DecorationsOf p := by mk_decorations) [Checkable p'] : IO Unit := do
-  match ← Checkable.checkIO p' cfg with
-  | TestResult.success _ => if !cfg.quiet then IO.println "Success" else pure ()
+  let (result, numSamples) ← Checkable.checkIO p' cfg
+  match result with
+  | TestResult.success _ =>
+    if !cfg.quiet then IO.println s!"Success ({numSamples} samples)" else pure ()
   | TestResult.gaveUp n => if !cfg.quiet then IO.println s!"Gave up {n} times"
   | TestResult.failure _ xs n => throw (IO.userError $ formatFailure "Found problems!" xs n)
 
