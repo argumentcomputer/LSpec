@@ -1,36 +1,60 @@
 import LSpec.LSpec
 
+/-!
+# Testable Instances
+
+This module provides `Testable` instances for common types, enabling
+LSpec to test equality, inequality, and bounded quantification directly.
+
+## Provided Instances
+
+- `Testable (x = y)` for `DecidableEq` types
+- `Testable (x == y)` for `BEq` types
+- `Testable (x ≠ y)` for `DecidableEq` types
+- `Testable (x != y)` for `BEq` types
+- `Testable (∀ n, n < b → p n)` for bounded natural number quantification
+-/
+
 namespace LSpec
 
+/-- Testable instance for decidable equality. -/
 instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : Testable (x = y) :=
   if h : x = y then
     .isTrue h
   else
-    .isFalse h $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
+    .isFalse h 0 0 $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
 
+/-- Testable instance for boolean equality. -/
 instance (priority := 50) (x y : α) [BEq α] [Repr α] : Testable (x == y) :=
   if h : x == y then
     .isTrue h
   else
-    .isFalse h $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
+    .isFalse h 0 0 $ s!"Expected to be equal: '{repr x}' and '{repr y}'"
 
+/-- Testable instance for decidable inequality. -/
 instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : Testable (x ≠ y) :=
   if h : x ≠ y then
     .isTrue h
   else
-    .isFalse h s!"Expected to be different but both equal to '{repr x}'"
+    .isFalse h 0 0 s!"Expected to be different but both equal to '{repr x}'"
 
+/-- Testable instance for boolean inequality. -/
 instance (priority := 50) (x y : α) [BEq α] [Repr α] : Testable (x != y) :=
   if h : x != y then
     .isTrue h
   else
-    .isFalse h s!"Expected to be different but both equal to '{repr x}'"
+    .isFalse h 0 0 s!"Expected to be different but both equal to '{repr x}'"
 
 /--
-A fancier example of `Testable` instance that allows us to write:
+Testable instance for bounded universal quantification over natural numbers.
+
+This enables tests like:
 ```lean
-#lspec test "forall n < 10, n - 5 < 5" $ ∀ n, n < 10 → n - 5 < 5
+#lspec test "all small" $ ∀ n, n < 10 → n * n < 100
 ```
+
+The bound `b` determines how many values are tested (0 to b-1).
+If any value fails, the output shows which input caused the failure.
 -/
 instance Nat.Testable_forall_lt
   (b : Nat) (p : Nat → Prop)
@@ -48,17 +72,17 @@ instance Nat.Testable_forall_lt
           cases Nat.eq_or_lt_of_le (Nat.le_of_lt_succ hn) with
           | inl hl => cases hl; assumption
           | inr => apply h; assumption
-      | .isPassed msg => .isPassed msg
+      | .isPassed numSamples msg => .isPassed numSamples msg
       | .isMaybe msg => .isMaybe msg
-      | .isFalse hb msg =>
-        .isFalse (λ h => hb (h _ (Nat.lt_succ_self _))) $
+      | .isFalse hb failedAt totalTests msg =>
+        .isFalse (λ h => hb (h _ (Nat.lt_succ_self _))) failedAt totalTests $
           match msg with
           | some msg => s!"Fails on input {b}. {msg}"
           | none     => s!"Fails on input {b}."
-      | .isFailure msg => .isFailure msg
-    | .isPassed msg => .isPassed msg
+      | .isFailure failedAt totalTests msg => .isFailure failedAt totalTests msg
+    | .isPassed numSamples msg => .isPassed numSamples msg
     | .isMaybe msg => .isMaybe msg
-    | .isFalse h msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_succ_of_le hn)) msg
-    | .isFailure msg => .isFailure msg
+    | .isFalse h failedAt totalTests msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_succ_of_le hn)) failedAt totalTests msg
+    | .isFailure failedAt totalTests msg => .isFailure failedAt totalTests msg
 
 end LSpec

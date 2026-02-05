@@ -1,27 +1,55 @@
 import LSpec
 
+/-!
+# LSpec Testing Examples
+
+This file demonstrates the various testing capabilities of LSpec,
+including unit tests, property-based tests, and output formatting.
+
+## Output Format
+
+LSpec uses logical quantifier notation to clearly indicate the verification level:
+
+- `✓ ∃:` - Unit test passed (verified a single specific case)
+- `✓ ∀:` - Property test with formal proof (universal quantification proven)
+- `✓ ∃ₙ:` - Property test passed n samples without formal proof
+- `× ∃ⁿ/ₘ:` - Property test failed on sample n of m total
+
+The `check'` and `checkIO'` macros capture the property syntax for display,
+producing richer output like: `✓ ∃₁₀₀: "name" (∀ n m : Nat, n + m = m + n)`
+-/
+
 open LSpec
 
+/-! ## Unit Tests
+
+Unit tests verify specific decidable propositions. They use `∃:` notation
+because we're verifying the existence of a specific case that holds.
+-/
+
 #lspec
-  test "Nat equality" (4 = 5) $
-  test "Nat inequality" (4 ≠ 5) $
-  test "bool equality" (42 == 42) $
+  test "Nat equality" (4 = 5) $      -- This will fail
+  test "Nat inequality" (4 ≠ 5) $    -- ✓ ∃: Nat inequality
+  test "bool equality" (42 == 42) $  -- ✓ ∃: bool equality
   test "list length" ([42].length = 1) $
   test "list nonempty" ¬ [42].isEmpty
--- × Nat equality
---     Expected to be equal: '4' and '5'
--- ✓ Nat inequality
--- ✓ bool equality
--- ✓ list length
--- ✓ list nonempty
 
--- Testing a test group. Indents are important!
+/-! ## Test Groups
+
+Tests can be organized into groups using `group`, `describe`, or `context`.
+These are aliases that help document intent:
+- `describe`: for describing a component being tested
+- `context`: for describing circumstances under which tests run
+- `group`: general-purpose grouping
+-/
+
 def tGroup : TestSeq := group "test group test" $
   test "Nat inequality" (4 ≠ 5) $
   test "Nat inequality" (3 ≠ 5) $
   test "Nat equality" (42 == 42)
 
 #lspec (tGroup ++ tGroup ++ test "Nat equality" (42 = 42))
+
 #lspec (
   test "Nat equality" (42 = 42) $
   group "manual group" (
@@ -29,10 +57,13 @@ def tGroup : TestSeq := group "test group test" $
   tGroup
   )
 
--- Testing describe/context aliases (hspec-style grouping)
+/-! ## Describe/Context Style (Hspec-inspired)
+
+Using `describe` for component-level and `context` for circumstance-level
+organization creates readable, hierarchical test output.
+-/
 section describe_context_tests
 
-/-- Using `describe` for component-level organization -/
 def parserTests : TestSeq :=
   describe "Parser" $
     context "when parsing numbers" $
@@ -45,13 +76,12 @@ def parserTests : TestSeq :=
 #lspec parserTests
 -- Parser:
 --   when parsing numbers:
---     ✓ parses single digits
---     ✓ parses multi-digit numbers
---   when parsing strings:
---     ✓ handles empty strings
---     ✓ handles quoted strings
+--     ✓ ∃: parses single digits
+--     ✓ ∃: parses multi-digit numbers
+--     when parsing strings:
+--       ✓ ∃: handles empty strings
+--       ✓ ∃: handles quoted strings
 
-/-- Nested describe/context blocks -/
 def mathTests : TestSeq :=
   describe "Math operations" $
     describe "Addition" $
@@ -63,7 +93,6 @@ def mathTests : TestSeq :=
 
 #lspec mathTests
 
-/-- Mixing describe, context, and group -/
 def mixedGrouping : TestSeq :=
   describe "List operations" $
     context "with empty list" $
@@ -76,9 +105,8 @@ def mixedGrouping : TestSeq :=
 
 end describe_context_tests
 
-/--
-Testing using `#lspec` with something of type `LSpec`.
--/
+/-! ## Basic Test Definitions -/
+
 def test1 : TestSeq :=
   test "Nat equality" (4 = 4) $
   test "Nat inequality" (4 ≠ 5) $
@@ -88,15 +116,12 @@ def test1 : TestSeq :=
 
 #lspec test1
 
-#eval lspecIO test1
+-- Running tests via lspecIO for runtime execution
+#eval lspecIO (.ofList [("test1", [test1])]) []
 
-/--
-Testing using `#lspec` with something of type `LSpecTest`.
--/
 def test2 := test "true" true
 
 #lspec test2
-
 #lspec test "true" <| true
 
 #lspec
@@ -105,51 +130,80 @@ def test2 := test "true" true
 
 #lspec
   test "array eq" <| #[1,2,3] = (List.range 3).toArray
--- × array eq
+-- × ∃: array eq
 --     Expected to be equal: '#[1, 2, 3]' and '#[0, 1, 2]'
 
+/-! ## IO-based Tests
 
-def fourIO : IO Nat :=
-  return 4
+For tests that require IO operations (file reading, network, etc.),
+use `lspecIO` with a HashMap of test suites.
+-/
 
-def fiveIO : IO Nat :=
-  return 5
+def fourIO : IO Nat := return 4
+def fiveIO : IO Nat := return 5
 
 def main := do
   let four ← fourIO
   let five ← fiveIO
-  lspecIO $
+  lspecIO (.ofList [("IO tests", [
     tGroup ++ (
     test "fourIO equals 4" (four = 4) $
-    test "fiveIO equals 5" (five = 5))
+    test "fiveIO equals 5" (five = 5))])]) []
 
 #eval main
--- ✓ fourIO equals 4
--- ✓ fiveIO equals 5
--- 0
+
+/-! ## Bounded Universal Quantification
+
+LSpec supports bounded quantification with automatic iteration.
+-/
 
 #lspec test "all lt" $ ∀ n, n < 10 → n - 5 < 5
--- ✓ all lt
+-- ✓ ∃: all lt
 
 #lspec test "all lt" $ ∀ n, n < 15 → n - 10 = 0
--- × all lt
+-- × ∃: all lt
 --     Fails on input 11. Expected to be equal: '1' and '0'
+
+/-! ## Property-Based Testing with SlimCheck
+
+Property tests use random sampling to verify properties over many inputs.
+
+### Using `check'` (with syntax capture)
+
+The `check'` macro captures the property syntax for display:
+- Success: `✓ ∃₁₀₀: "name" (∀ n m : Nat, n + m = m + n)`
+- Failure: `× ∃²/₁₀₀: "name" (∀ n m : Nat, n + m = m + m)`
+
+The subscript shows samples tested, superscript shows which sample failed.
+-/
 
 section slimcheck_tests
 
-#lspec check "add_comm" (∀ n m : Nat, n + m = m + n)
--- ? add_comm
+-- Property test with syntax capture - shows the property in output
+#lspec check' "add_comm" (∀ n m : Nat, n + m = m + n)
+-- ✓ ∃₁₀₀: "add_comm" (∀ n m : Nat, n + m = m + n)
 
-#lspec check "add_comm" (∀ n m : Nat, n + m = m + m) $ check "mul_comm" $ ∀ n m : Nat, n * m = m * n
--- × add_comm
+-- Test that fails - shows which sample failed (superscript) out of total (subscript)
+#lspec check' "add_fails" (∀ n m : Nat, n + m = m + m)
+-- × ∃²/₁₀₀: "add_fails" (∀ n m : Nat, n + m = m + m)
+--     ===================
+--     Found problems!
+--     n := 1
+--     m := 0
+--     ...
 
--- ===================
--- Found problems!
--- n := 1
--- m := 0
--- issue: 1 = 0 does not hold
--- (0 shrinks)
--------------------
--- ? mul_comm
+-- Chaining property tests
+def slimTests : TestSeq :=
+  let t1 : TestSeq := check' "mul_comm" (∀ n m : Nat, n * m = m * n)
+  let t2 : TestSeq := check' "add_zero" (∀ n : Nat, n + 0 = n)
+  t1 ++ t2
+
+#lspec slimTests
+-- ✓ ∃₁₀₀: "mul_comm" (∀ n m : Nat, n * m = m * n)
+-- ✓ ∃₁₀₀: "add_zero" (∀ n : Nat, n + 0 = n)
+
+-- Standard check (without syntax capture) - simpler output
+#lspec check "standard_check" (∀ n m : Nat, n + m = m + n)
+-- ✓ ∃: standard_check
 
 end slimcheck_tests
