@@ -1,3 +1,4 @@
-import LSpec.LSpec
-import LSpec.Instances
-import LSpec.SlimCheck
+module
+public import LSpec.LSpec
+public import LSpec.Instances
+public import LSpec.SlimCheck

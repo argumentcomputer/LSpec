@@ -1,4 +1,5 @@
-import LSpec.LSpec
+module
+public import LSpec.LSpec
 
 /-!
 # Testable Instances
@@ -16,6 +17,7 @@ LSpec to test equality, inequality, and bounded quantification directly.
 -/
 
 namespace LSpec
+public section
 
 /-- Testable instance for decidable equality. -/
 instance (priority := 50) (x y : α) [DecidableEq α] [Repr α] : Testable (x = y) :=
@@ -85,4 +87,5 @@ instance Nat.Testable_forall_lt
     | .isFalse h failedAt totalTests msg => .isFalse (λ h' => h λ n hn => h' _ (Nat.le_succ_of_le hn)) failedAt totalTests msg
     | .isFailure failedAt totalTests msg => .isFailure failedAt totalTests msg
 
+end
 end LSpec

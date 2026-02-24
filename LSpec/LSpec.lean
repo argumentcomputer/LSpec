@@ -1,5 +1,5 @@
-import Lean
-import LSpec.SlimCheck.Checkable
+module
+public import LSpec.SlimCheck.Checkable
 
 /-!
 # The core `LSpec` framework
@@ -64,7 +64,7 @@ Use `check` and `checkIO` (without apostrophe) for simpler output.
 -/
 
 namespace LSpec
-
+public section
 /--
 The main typeclass of propositions that can be tested by `LSpec`.
 
@@ -585,4 +585,5 @@ def lspecEachIO (l : List α) (f : α → IO TestSeq) : IO UInt32 := do
     | (false, msg) => IO.eprintln msg; pure false
   if success then return 0 else return 1
 
+end
 end LSpec
