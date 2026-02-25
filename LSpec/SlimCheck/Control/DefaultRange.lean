@@ -3,6 +3,7 @@ Copyright (c) 2022 Hanting Zhang. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Hanting Zhang
 -/
+module
 
 /-!
 # Bounded and DefaultRange classes
@@ -29,6 +30,7 @@ Lean developers, please forgive us.
 -/
 
 namespace SlimCheck
+public section
 
 class Bounded (α : Type u) where
   lo : α
@@ -58,4 +60,5 @@ instance : DefaultRange Int where
   lo := - Int.ofNat (USize.size / 2)
   hi := Int.ofNat (USize.size / 2 - 1)
 
+end
 end SlimCheck

@@ -1,3 +1,4 @@
-import LSpec.SlimCheck.Gen
-import LSpec.SlimCheck.Checkable
-import LSpec.SlimCheck.Sampleable
+module
+public import LSpec.SlimCheck.Gen
+public import LSpec.SlimCheck.Checkable
+public import LSpec.SlimCheck.Sampleable

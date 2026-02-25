@@ -3,7 +3,8 @@ Copyright (c) 2021 Henrik Böving. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Henrik Böving, Simon Hudon
 -/
-import LSpec.SlimCheck.Control.Random
+module
+public import LSpec.SlimCheck.Control.Random
 
 /-!
 # `Gen` Monad
@@ -19,6 +20,7 @@ random testing
 -/
 
 namespace SlimCheck
+public section
 
 open Random
 
@@ -118,4 +120,5 @@ end Gen
 def Gen.run (x : Gen α) (size : Nat) : BaseIO α :=
   IO.runRand $ ReaderT.run x ⟨size⟩
 
+end
 end SlimCheck
