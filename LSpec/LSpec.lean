@@ -525,30 +525,21 @@ def main (args : List String) : IO UInt32 :=
 ```
 -/
 def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt32 := do
-  -- Compute the filtered map containing the test suites to run
-  let filteredMap :=
-    if args.isEmpty then map
+  -- Compute the filtered entries as a List for destructive consumption.
+  -- Using a List (rather than HashMap) allows tail-recursive pattern matching
+  -- to release each test suite from memory after it finishes running.
+  let numSuites := map.size
+  let entries : List (String × List TestSeq) :=
+    if args.isEmpty then map.toList
     else Id.run do
-      let mut acc := .emptyWithCapacity args.length
+      let mut acc : List (String × List TestSeq) := []
       for arg in args do
         for (key, tSeq) in map do
           if key.startsWith arg then
-            acc := acc.insert key tSeq
+            acc := (key, tSeq) :: acc
       pure acc
-
-  -- Accumulate error messages
-  let mut testsWithErrors : HashMap String (Array String) := .emptyWithCapacity map.size
-  for (key, tSeqs) in filteredMap do
-    IO.println key
-    for tSeq in tSeqs do
-      let (success, msg) ← tSeq.runIO (indent := 2)
-      if success then IO.println msg
-      else
-        IO.eprintln msg
-        if let some msgs := testsWithErrors[key]? then
-          testsWithErrors := testsWithErrors.insert key $ msgs.push msg
-        else
-          testsWithErrors := testsWithErrors.insert key #[msg]
+  -- map is now dead — compiler can dec it before the long-running runSuites
+  let testsWithErrors ← runSuites entries (.emptyWithCapacity numSuites)
 
   -- Early return 0 when there are no errors
   if testsWithErrors.isEmpty then return 0
@@ -560,6 +551,34 @@ def lspecIO (map : HashMap String (List TestSeq)) (args : List String) : IO UInt
     for msg in msgs do
       IO.eprintln msg
   return 1
+
+where
+  -- Tail-recursive: after each recursive call, `tSeq` goes out of scope
+  -- and its reference count is decremented, allowing GC between tests.
+  runTests (key : String) :
+      List TestSeq → HashMap String (Array String) → IO (HashMap String (Array String))
+    | [], errors => pure errors
+    | tSeq :: rest, errors => do
+      let (success, msg) ← tSeq.runIO (indent := 2)
+      if success then
+        IO.println msg
+        runTests key rest errors
+      else
+        IO.eprintln msg
+        let errors := match errors[key]? with
+          | some msgs => errors.insert key (msgs.push msg)
+          | none => errors.insert key #[msg]
+        runTests key rest errors
+
+  -- Tail-recursive: after each recursive call, `tSeqs` goes out of scope
+  -- and its reference count is decremented, allowing GC between suites.
+  runSuites :
+      List (String × List TestSeq) → HashMap String (Array String) → IO (HashMap String (Array String))
+    | [], errors => pure errors
+    | (key, tSeqs) :: rest, errors => do
+      IO.println key
+      let errors ← runTests key tSeqs errors
+      runSuites rest errors
 
 /--
 Runs tests lazily from a list, alternating between test creation and execution.

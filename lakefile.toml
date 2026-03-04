@@ -1,6 +1,11 @@
 name = "LSpec"
 version = "2.0.0"
 defaultTargets = ["LSpec"]
+testDriver = "tests"
 
 [[lean_lib]]
 name = "LSpec"
+
+[[lean_exe]]
+name = "tests"
+root = "Tests.Main"
