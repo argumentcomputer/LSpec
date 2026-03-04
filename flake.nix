@@ -27,19 +27,19 @@
         self',
         config,
         ...
-      }: let lake2nix = pkgs.callPackage lean4-nix.lake {};
-        in {
+      }: let
+        lake2nix = pkgs.callPackage lean4-nix.lake {};
+      in {
         _module.args.pkgs = import nixpkgs {
           inherit system;
           overlays = [(lean4-nix.readToolchainFile ./lean-toolchain)];
         };
 
         # Build the library with `nix build`
-        packages.default =
-          lake2nix.mkPackage {
-            name = "LSpec";
-            src = ./.;
-          };
+        packages.default = lake2nix.mkPackage {
+          name = "LSpec";
+          src = ./.;
+        };
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs.lean; [lean-all];

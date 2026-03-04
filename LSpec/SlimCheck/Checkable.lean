@@ -4,8 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Henrik Böving, Simon Hudon
 -/
 
-import LSpec.SlimCheck.Sampleable
-import Lean
+module
+public import LSpec.SlimCheck.Sampleable
+public import Lean.Elab.Tactic.Basic
+meta import Lean.Elab.Tactic.Basic
 
 /-!
 # `Checkable` Class
@@ -61,7 +63,7 @@ random testing
 -/
 
 namespace SlimCheck
-
+public section
 /-- Result of trying to disprove `p`
 The constructors are:
   *  `success : (PSum Unit p) → TestResult p`
@@ -127,6 +129,7 @@ instance (priority := low) : PrintableProp p where
 class Checkable (p : Prop) where
   run (cfg : Configuration) (minimize : Bool) : Gen (TestResult p)
 
+@[expose]
 def NamedBinder (_n : String) (p : Prop) : Prop := p
 
 namespace TestResult
@@ -458,7 +461,7 @@ open Lean
 
 /-- Traverse the syntax of a proposition to find universal quantifiers
 quantifiers and add `NamedBinder` annotations next to them. -/
-partial def addDecorations (e : Expr) : Expr :=
+meta partial def addDecorations (e : Expr) : Expr :=
   e.replace fun expr => match expr with
     | Expr.forallE name type body data =>
       let n := name.toString
@@ -507,4 +510,5 @@ def Checkable.check (p : Prop) (cfg : Configuration := {})
 -- #eval Checkable.check (∀ (x : (Nat × Nat)), x.fst - x.snd - 10 = x.snd - x.fst - 10) Configuration.verbose
 -- #eval Checkable.check (∀ (x : Nat) (h : 10 < x), 5 < x) Configuration.verbose
 
+end
 end SlimCheck
