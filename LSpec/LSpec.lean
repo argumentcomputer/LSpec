@@ -19,6 +19,8 @@ LSpec provides three main ways to define tests:
 ```lean
 import LSpec
 
+open LSpec
+
 -- Simple unit tests using #lspec
 #lspec test "basic arithmetic" (2 + 2 = 4)
 
