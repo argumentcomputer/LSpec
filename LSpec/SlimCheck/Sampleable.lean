@@ -91,13 +91,14 @@ class SampleableExt (α : Sort u) where
   sample : Gen proxy
   interp : proxy → α
 
-attribute [instance] SampleableExt.proxyRepr
-attribute [instance] SampleableExt.shrink
+attribute [reducible, instance] SampleableExt.proxyRepr
+attribute [reducible, instance] SampleableExt.shrink
 
 namespace SampleableExt
 
 /-- Use to generate instance whose purpose is to simply generate values
 of a type directly using the `Gen` monad -/
+@[reducible]
 def mkSelfContained [Repr α] [Shrinkable α] (sample : Gen α) : SampleableExt α where
   proxy := α
   proxyRepr := inferInstance
@@ -176,6 +177,7 @@ instance Bool.sampleableExt : SampleableExt Bool :=
 /-- This can be specialized into customized `SampleableExt Char` instances.
 The resulting instance has `1 / length` chances of making an unrestricted choice of characters
 and it otherwise chooses a character from `chars` with uniform probabilities.  -/
+@[reducible]
 def Char.sampleable (length : Nat) (chars : Array Char) : SampleableExt Char :=
   mkSelfContained do
     let x ← choose Nat 0 length
