@@ -147,6 +147,15 @@ def propertyTests : TestSeq :=
       (assertRunIO (checkIO "bad" (∀ n : Nat, n = n + 1)) false) .done
   )
 
+-- Variant of `propertyTests` above which tests the Plausible integration
+def plausiblePropertyTests : TestSeq :=
+  group "Plausible property tests" (
+    .individualIO "checkPlausibleIO passing property" none
+      (assertRunIO (checkPlausibleIO "add_zero" (∀ n : Nat, n + 0 = n)) true) .done ++
+    .individualIO "checkPlausibleIO failing property" none
+      (assertRunIO (checkPlausibleIO "bad" (∀ n : Nat, n = n + 1)) false) .done
+  )
+
 /-! ## lspecIO integration -/
 
 def lspecIOIntegration : TestSeq :=
@@ -233,6 +242,7 @@ def main (args : List String) : IO UInt32 := do
     ("Combinators", [combinatorTests]),
     ("Append", [appendTests]),
     ("Property tests", [propertyTests]),
+    ("Plausible property tests", [plausiblePropertyTests]),
     ("lspecIO integration", [lspecIOIntegration]),
     ("lspecEachIO", [lspecEachIOTests])
   ]

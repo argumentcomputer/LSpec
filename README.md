@@ -126,3 +126,74 @@ Once this is done a `Slimcheck` test is evaluated in a similar way to
 -- (0 shrinks)
 -- -------------------
 ```
+
+## Integration with `Plausible`
+
+LSpec also integrates with Lean's [Plausible](https://github.com/leanprover-community/plausible) property-based testing library. The Plausible backend lives alongside the SlimCheck-based `check`/`checkIO` 
+described above rather than replacing them, so existing SlimCheck tests continue to work unchanged.
+
+Plausible relies on the same core typeclasses as QuickCheck — `Shrinkable` and `SampleableExt`
+to generate and shrink random values — plus `Plausible.Testable` for the property itself.
+Instances for the common types (`Nat`, `Int`, `List`, etc.) ship with Plausible, and custom
+types are supported by providing `Shrinkable`/`SampleableExt` instances just as with SlimCheck.
+
+The module [LSpec.Plausible](LSpec/Plausible.lean) exposes two macros:
+
+* `checkPlausible'` — a **compile-time** property test, evaluated during elaboration with a
+  fixed random seed (deterministic across compilations). This is the Plausible-backed
+  counterpart to `check'`.
+* `checkPlausibleIO'` — a **runtime** property test, deferred until the test suite is run.
+  This enables fresh random values on each run and configurable seeds via `cfg.randomSeed`.
+  This is the Plausible-backed counterpart to `checkIO'`.
+
+Both macros capture the property syntax so it appears in the output. (Non-syntax-capturing
+`checkPlausible`/`checkPlausibleIO` functions are also available if you don't need the
+property echoed back.)
+
+A compile-time test with `#lspec`:
+
+```lean
+#lspec checkPlausible' "add_comm" (∀ n m : Nat, n + m = m + n)
+-- ✓ ∃₁₀₀: "add_comm" (∀ n m : Nat, n + m = m + n)
+
+#lspec checkPlausible' "bad" (∀ n : Nat, n < 5)
+-- × ∃¹⁰/₁₀₀: "bad" (∀ n : Nat, n < 5)
+
+-- ===================
+-- Found problems!
+-- n := 6
+-- issue: 6 < 5 does not hold
+-- (0 shrinks)
+-- -------------------
+```
+
+A runtime test, run via `lspecIO`. Because `checkPlausibleIO'` tests are skipped by the pure
+`#lspec` runner, they must be executed with `lspecIO` (or `lspecEachIO`):
+
+```lean
+open LSpec
+
+def plausibleTests : TestSeq :=
+  checkPlausibleIO' "add_comm" (∀ n m : Nat, n + m = m + n)
+
+def main : IO UInt32 := lspecIO (.ofList [("plausibleTests", [plausibleTests])]) []
+```
+
+Multiple property tests can be sequenced with `++`. Note that the `'`-suffixed macros
+capture everything up to the end of the line as the property, so to chain them use the
+non-capturing `checkPlausibleIO` function (which takes an explicit `next` argument):
+
+```lean
+def suite : TestSeq :=
+  checkPlausibleIO "add_comm" (∀ n m : Nat, n + m = m + n) $
+  checkPlausibleIO "mul_one"  (∀ n : Nat, n * 1 = n)
+```
+
+The `'`-suffixed macros always use the default configuration. To pass a fixed seed for
+reproducible runs (or otherwise customise the `Plausible.Configuration`), call the underlying
+`checkPlausibleIO` function directly:
+
+```lean
+def reproducible : TestSeq :=
+  checkPlausibleIO "add_comm" (∀ n m : Nat, n + m = m + n) .done { randomSeed := some 42 }
+```
