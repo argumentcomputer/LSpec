@@ -5,11 +5,11 @@
         "nixpkgs-lib": "nixpkgs-lib"
       },
       "locked": {
-        "lastModified": 1778716662,
-        "narHash": "sha256-m1Yf0wZ8j1OHjTc2UwHwyQRSnNeSgLJOd7q5Y45hzi4=",
+        "lastModified": 1785627969,
+        "narHash": "sha256-4dtXQk/NMePegK/nWp5NSeuZKLATItOq61lpEvmXqGw=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "f7c1a2d347e4c52d5fb8d10cb4d94b5884e546fb",
+        "rev": "427bf4bd9435fdf21321c8cc628c24efc14c0f7a",
         "type": "github"
       },
       "original": {
@@ -42,15 +42,15 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1784223297,
-        "narHash": "sha256-rmEX8SXvtT7Fi8hOZuCXCbpyzno3iTQYnV3WKzsAVHw=",
-        "owner": "lenianiva",
+        "lastModified": 1786478490,
+        "narHash": "sha256-fLEj7wL69j4DJva/lb5rp3m3fl6WBLMMy0V/F5clgJU=",
+        "owner": "argumentcomputer",
         "repo": "lean4-nix",
-        "rev": "82993165f5f30879fc9d40734615ec54cb541e61",
+        "rev": "2b15e1ffd5ee31e6bc4d30ec8afe0564317a8c26",
         "type": "github"
       },
       "original": {
-        "owner": "lenianiva",
+        "owner": "argumentcomputer",
         "repo": "lean4-nix",
         "type": "github"
       }
@@ -73,11 +73,11 @@
     },
     "nixpkgs-lib": {
       "locked": {
-        "lastModified": 1777168982,
-        "narHash": "sha256-GOkGPcboWE9BmGCRMLX3worL4EMnsnG8MyKmXNeYuhQ=",
+        "lastModified": 1785031560,
+        "narHash": "sha256-OmshNvn2vupOFpYinLUu+1Dnpu4n7Q5N3ggGVNHpkUI=",
         "owner": "nix-community",
         "repo": "nixpkgs.lib",
-        "rev": "f5901329dade4a6ea039af1433fb087bd9c1fe14",
+        "rev": "0e79af5e3d4dcfcd676ab5ba3f95d2e3352e078c",
         "type": "github"
       },
       "original": {
