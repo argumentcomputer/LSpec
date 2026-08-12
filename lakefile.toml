@@ -6,7 +6,7 @@ testDriver = "tests"
 [[require]]
 name = "plausible"
 git = "https://github.com/leanprover-community/plausible"
-rev = "6304553"
+rev = "v4.31.0"
 
 [[lean_lib]]
 name = "LSpec"
