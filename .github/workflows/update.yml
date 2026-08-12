@@ -32,5 +32,4 @@ jobs:
         with:
           bump_mode: pinned-tags
           on_update_fails: pr
-          build_args: "--wfail"
           token: ${{ steps.app-token.outputs.token }}
