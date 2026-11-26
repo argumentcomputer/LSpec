@@ -24,6 +24,12 @@ jobs:
       - uses: leanprover/lean-action@50fcf42d2e460296f1a34b402e990d1b24f8b596 # v1.6.0
         with:
           build-args: "--wfail"
+      - name: Verify formal proofs
+        run: lake build LSpecProofs --wfail
+      - name: Run parallel test suite
+        run: lake exe tests -j 4
+      - name: Typecheck examples
+        run: lake env lean Examples/Examples.lean
 
   # Builds the library and runs the test suite via Nix flake checks
   nix-test:

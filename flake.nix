@@ -49,9 +49,16 @@
         };
 
         # `mkPackage "LSpec"` only builds the library target, so the `tests`
-        # exe is built explicitly, reusing `lspec`'s build artifacts.
+        # exe and `LSpecProofs` library are built explicitly, reusing `lspec`'s
+        # build artifacts.
         lspecTest = lake2nix.mkPackage {
           name = "tests";
+          inherit src;
+          lakeArtifacts = lspec;
+        };
+
+        lspecProofs = lake2nix.mkPackage {
+          name = "LSpecProofs";
           inherit src;
           lakeArtifacts = lspec;
         };
@@ -59,11 +66,13 @@
         # Build the library with `nix build`
         packages.default = lspec;
 
-        # Build and run the test suite as a flake check (`nix flake check`).
+        # Build and run the test suite and verify formal proofs (`nix flake check`).
         checks.tests = pkgs.runCommand "LSpec-tests" {} ''
           ${lspecTest}/bin/tests
           touch $out
         '';
+
+        checks.proofs = lspecProofs;
 
         devShells.default = pkgs.mkShell {
           packages = [lean];
