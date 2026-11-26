@@ -1,16 +1,19 @@
 name = "LSpec"
-version = "2.0.0"
+version = "3.0.0"
 defaultTargets = ["LSpec"]
 testDriver = "tests"
-
-[[require]]
-name = "plausible"
-git = "https://github.com/leanprover-community/plausible"
-rev = "v4.34.0"
 
 [[lean_lib]]
 name = "LSpec"
 
+[[lean_lib]]
+name = "LSpecProofs"
+moreLeanArgs = ["-DwarningAsError=true"]
+
+[[lean_lib]]
+name = "LSpecTests"
+roots = ["LSpecTests.ImportCheck", "LSpecTests.Main"]
+
 [[lean_exe]]
 name = "tests"
-root = "Tests.Main"
+root = "LSpecTests.Main"
